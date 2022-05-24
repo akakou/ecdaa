@@ -3,6 +3,7 @@ module example.com/m/v2
 go 1.18
 
 require (
+	github.com/cloudflare/bn256 v0.0.0-20220303221803-9bd9f73a0273 // indirect
 	github.com/google/certificate-transparency-go v1.1.1 // indirect
 	github.com/google/go-attestation v0.4.3 // indirect
 	github.com/google/go-tpm v0.3.3 // indirect
