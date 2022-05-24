@@ -47,8 +47,8 @@ type IPK struct {
 }
 
 type Issuer struct {
-	ipk *IPK
-	isk *ISK
+	ipk IPK
+	isk ISK
 }
 
 func RandomISK() (*ISK, error) {
@@ -119,10 +119,11 @@ func RandomIPK(isk *ISK) (*IPK, error) {
 
 	// copy pointers to ipk
 	ipk.X = X
-	ipk.X = Y
+	ipk.Y = Y
 	ipk.c = c
 	ipk.s_x = s_x
-	ipk.s_y = ipk.s_x
+	ipk.s_y = s_y
 
 	return ipk, nil
 }
+
