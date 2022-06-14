@@ -1,0 +1,3 @@
+[submodule "thirdparty/amcl"]
+	path = thirdparty/amcl
+	url = https://github.com/miracl/core
