@@ -26,7 +26,7 @@ func RandomISK(rng *core.RAND) ISK {
 	return isk
 }
 
-func main() {
+func InitRandom() *core.RAND {
 	var seed [SEED_SIZE]byte
 	rng := core.NewRAND()
 
@@ -37,6 +37,12 @@ func main() {
 
 	rng.Seed(SEED_SIZE, seed[:])
 
+	return rng
+
+}
+
+func main() {
+	rng := InitRandom()
 	isk := RandomISK(rng)
 
 	fmt.Println("x: %v", isk.x)
