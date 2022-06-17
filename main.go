@@ -1,7 +1,7 @@
 package main
 
-import "miracl/core/FP256BN"
+import "fmt"
 
 func main() {
-	FP256BN.NewBIG()
+	fmt.Print("hello world")
 }
