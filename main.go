@@ -19,6 +19,21 @@ type ISK struct {
 	y *FP256BN.BIG
 }
 
+func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
+	hasher := sha256.New()
+	var buf [2*int(FP256BN.MODBYTES) + 1]byte
+
+	for _, v := range n {
+		v.ToBytes(buf[:], true)
+		hasher.Write(buf[:])
+	}
+
+	retHash := hasher.Sum(nil)
+	resBIG := FP256BN.FromBytes(retHash)
+
+	return resBIG
+}
+
 func RandomISK(rng *core.RAND) ISK {
 	var isk ISK
 	x := FP256BN.Random(rng)
@@ -60,29 +75,13 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	X := FP256BN.ECP2_generator().Mul(x)
 	Y := FP256BN.ECP2_generator().Mul(y)
 
-	U_x := FP256BN.ECP2_generator().Mul(r_x)
-	U_y := FP256BN.ECP2_generator().Mul(r_y)
+	// U_x := FP256BN.ECP2_generator().Mul(r_x)
+	// U_y := FP256BN.ECP2_generator().Mul(r_y)
 
 	// calc `c = H(U_x | U_y | X | Y)`
 
-	h := sha256.New()
+	c := HashECP2s(X, Y)
 
-	var buf [2*int(FP256BN.MODBYTES) + 1]byte
-	U_x.ToBytes(buf[:], true)
-	h.Write(buf[:])
-
-	U_y.ToBytes(buf[:], true)
-	h.Write(buf[:])
-
-	X.ToBytes(buf[:], true)
-	h.Write(buf[:])
-
-	Y.ToBytes(buf[:], true)
-	h.Write(buf[:])
-
-	retH := h.Sum(nil)
-
-	c := FP256BN.FromBytes(retH)
 	// c := new(big.Int).SetBytes(buf)
 
 	// calc s_x, s_y
@@ -121,34 +120,17 @@ func VerifyIPK(ipk *IPK) error {
 	tmpX2 := X.Mul(invC)
 	tmpX1.Add(tmpX2)
 
-	tmpX := tmpX1
+	// tmpX := tmpX1
 
 	tmpY1 := FP256BN.ECP2_generator().Mul(s_y)
 	tmpY2 := Y.Mul(invC)
 	tmpY1.Add(tmpY2)
 
-	tmpY := tmpY1
+	// tmpY := tmpY1
 
-	h := sha256.New()
+	cDash := HashECP2s(X, Y)
 
-	var buf [2*int(FP256BN.MODBYTES) + 1]byte
-	tmpX.ToBytes(buf[:], true)
-	h.Write(buf[:])
-
-	tmpY.ToBytes(buf[:], true)
-	h.Write(buf[:])
-
-	X.ToBytes(buf[:], true)
-	h.Write(buf[:])
-
-	Y.ToBytes(buf[:], true)
-	h.Write(buf[:])
-
-	retH := h.Sum(nil)
-
-	c_dash := FP256BN.FromBytes(retH)
-
-	if FP256BN.Comp(c, c_dash) == 0 {
+	if FP256BN.Comp(c, cDash) == 0 {
 		return nil
 	} else {
 		return errors.New("err: IPK is not valid\n")
@@ -186,5 +168,5 @@ func main() {
 	fmt.Println("s_y: %v", ipk.s_y)
 
 	err := VerifyIPK(&ipk)
-	fmt.Printf("%v", err)
+	fmt.Printf("err: %v", err)
 }
