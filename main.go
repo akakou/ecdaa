@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"math/big"
 	"miracl/core"
@@ -106,6 +107,54 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	return ipk
 }
 
+func VerifyIPK(ipk *IPK) error {
+	X := ipk.X
+	Y := ipk.Y
+	c := ipk.c
+	s_x := ipk.s_x
+	s_y := ipk.s_y
+
+	invC := FP256BN.NewBIGcopy(c)
+	invC.Invmodp(p())
+
+	tmpX1 := FP256BN.ECP2_generator().Mul(s_x)
+	tmpX2 := X.Mul(invC)
+	tmpX1.Add(tmpX2)
+
+	tmpX := tmpX1
+
+	tmpY1 := FP256BN.ECP2_generator().Mul(s_y)
+	tmpY2 := Y.Mul(invC)
+	tmpY1.Add(tmpY2)
+
+	tmpY := tmpY1
+
+	h := sha256.New()
+
+	var buf [2*int(FP256BN.MODBYTES) + 1]byte
+	tmpX.ToBytes(buf[:], true)
+	h.Write(buf[:])
+
+	tmpY.ToBytes(buf[:], true)
+	h.Write(buf[:])
+
+	X.ToBytes(buf[:], true)
+	h.Write(buf[:])
+
+	Y.ToBytes(buf[:], true)
+	h.Write(buf[:])
+
+	retH := h.Sum(nil)
+
+	c_dash := FP256BN.FromBytes(retH)
+
+	if FP256BN.Comp(c, c_dash) == 0 {
+		return nil
+	} else {
+		return errors.New("err: IPK is not valid\n")
+	}
+}
+
 func InitRandom() *core.RAND {
 	var seed [SEED_SIZE]byte
 	rng := core.NewRAND()
@@ -135,4 +184,7 @@ func main() {
 	fmt.Println("c: %v", ipk.c)
 	fmt.Println("s_x: %v", ipk.s_x)
 	fmt.Println("s_y: %v", ipk.s_y)
+
+	err := VerifyIPK(&ipk)
+	fmt.Printf("%v", err)
 }
