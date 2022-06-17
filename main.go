@@ -31,6 +31,8 @@ func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
 	retHash := hasher.Sum(nil)
 	resBIG := FP256BN.FromBytes(retHash)
 
+	resBIG.Mod(p())
+
 	return resBIG
 }
 
@@ -71,25 +73,26 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	r_x := FP256BN.Random(rng)
 	r_y := FP256BN.Random(rng)
 
-	// calc X, Y, U_x, U_y
+	// calc X, Y
+	// X = g2^x
+	// Y = g2^y
 	X := FP256BN.ECP2_generator().Mul(x)
 	Y := FP256BN.ECP2_generator().Mul(y)
 
-	// U_x := FP256BN.ECP2_generator().Mul(r_x)
-	// U_y := FP256BN.ECP2_generator().Mul(r_y)
+	// calc U_x, U_y
+	//     U_x = g2 ^ r_x
+	//     U_y = g2 ^ r_y
+	U_x := FP256BN.ECP2_generator().Mul(r_x)
+	U_y := FP256BN.ECP2_generator().Mul(r_y)
 
 	// calc `c = H(U_x | U_y | X | Y)`
-
-	c := HashECP2s(X, Y)
-
-	// c := new(big.Int).SetBytes(buf)
+	c := HashECP2s(U_x, U_y, X, Y)
 
 	// calc s_x, s_y
 	//     s_x = r_x + cx
 	//     s_y = r_y + cy
 	// todo: mod p
-	s_x := FP256BN.NewBIG()
-	s_x = FP256BN.Modmul(x, c, p())
+	s_x := FP256BN.Modmul(c, x, p())
 	s_x = FP256BN.Modadd(r_x, s_x, p())
 
 	s_y := FP256BN.NewBIG()
@@ -113,27 +116,26 @@ func VerifyIPK(ipk *IPK) error {
 	s_x := ipk.s_x
 	s_y := ipk.s_y
 
-	invC := FP256BN.NewBIGcopy(c)
-	invC.Invmodp(p())
+	// calc minus c = -c
+	minusC := FP256BN.Modneg(c, p())
 
-	U_x1 := FP256BN.ECP2_generator().Mul(s_x)
-	U_x2 := X.Mul(invC)
-	U_x1.Add(U_x2)
+	// calc U_x = g2^s_x * X^{-c}
+	U_x := FP256BN.ECP2_generator().Mul(s_x)
+	tmp := X.Mul(minusC)
+	U_x.Add(tmp)
 
-	// U_x := U_x1
+	// calc U_y = g2^s_y * Y^{-c}
+	U_y := FP256BN.ECP2_generator().Mul(s_y)
+	tmp = Y.Mul(minusC)
+	U_y.Add(tmp)
 
-	U_y1 := FP256BN.ECP2_generator().Mul(s_y)
-	U_y2 := Y.Mul(invC)
-	U_y1.Add(U_y2)
-
-	// U_y := U_y1
-
-	cDash := HashECP2s(X, Y)
+	// hashing
+	cDash := HashECP2s(U_x, U_y, X, Y)
 
 	if FP256BN.Comp(c, cDash) == 0 {
 		return nil
 	} else {
-		return errors.New("err: IPK is not valid\n")
+		return errors.New("IPK is not valid\n")
 	}
 }
 
@@ -154,18 +156,9 @@ func InitRandom() *core.RAND {
 
 func main() {
 	rng := InitRandom()
+
 	isk := RandomISK(rng)
-
 	ipk := RandomIPK(&isk, rng)
-
-	fmt.Println("x: %v", isk.x)
-	fmt.Println("y: %v", isk.y)
-
-	fmt.Println("X: %v", ipk.X)
-	fmt.Println("Y: %v", ipk.Y)
-	fmt.Println("c: %v", ipk.c)
-	fmt.Println("s_x: %v", ipk.s_x)
-	fmt.Println("s_y: %v", ipk.s_y)
 
 	err := VerifyIPK(&ipk)
 	fmt.Printf("err: %v", err)
