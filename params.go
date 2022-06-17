@@ -22,3 +22,11 @@ func p() *FP256BN.BIG {
 
 	return pVal
 }
+
+func g1() *FP256BN.ECP {
+	return FP256BN.ECP_generator()
+}
+
+func g2() *FP256BN.ECP2 {
+	return FP256BN.ECP2_generator()
+}

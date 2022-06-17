@@ -55,14 +55,14 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	// calc X, Y
 	// X = g2^x
 	// Y = g2^y
-	X := FP256BN.ECP2_generator().Mul(x)
-	Y := FP256BN.ECP2_generator().Mul(y)
+	X := g2().Mul(x)
+	Y := g2().Mul(y)
 
 	// calc U_x, U_y
 	//     U_x = g2 ^ r_x
 	//     U_y = g2 ^ r_y
-	U_x := FP256BN.ECP2_generator().Mul(r_x)
-	U_y := FP256BN.ECP2_generator().Mul(r_y)
+	U_x := g2().Mul(r_x)
+	U_y := g2().Mul(r_y)
 
 	// calc `c = H(U_x | U_y | X | Y)`
 	c := HashECP2s(U_x, U_y, X, Y)
@@ -102,12 +102,12 @@ func VerifyIPK(ipk *IPK) error {
 	minusC := FP256BN.Modneg(c, p())
 
 	// calc U_x = g2^s_x * X^{-c}
-	U_x := FP256BN.ECP2_generator().Mul(s_x)
+	U_x := g2().Mul(s_x)
 	tmp := X.Mul(minusC)
 	U_x.Add(tmp)
 
 	// calc U_y = g2^s_y * Y^{-c}
-	U_y := FP256BN.ECP2_generator().Mul(s_y)
+	U_y := g2().Mul(s_y)
 	tmp = Y.Mul(minusC)
 	U_y.Add(tmp)
 
