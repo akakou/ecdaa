@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"math/big"
 	"miracl/core"
@@ -9,6 +10,8 @@ import (
 )
 
 const SEED_SIZE = 100
+
+var pVal *FP256BN.BIG = nil
 
 type ISK struct {
 	x *FP256BN.BIG
@@ -24,6 +27,83 @@ func RandomISK(rng *core.RAND) ISK {
 	isk.y = y
 
 	return isk
+}
+
+type IPK struct {
+	X   *FP256BN.ECP2
+	Y   *FP256BN.ECP2
+	c   *FP256BN.BIG
+	s_x *FP256BN.BIG
+	s_y *FP256BN.BIG
+}
+
+func p() *FP256BN.BIG {
+	if pVal == nil {
+		pVal = FP256BN.NewBIGints(FP256BN.CURVE_Order)
+	}
+
+	return pVal
+}
+
+func RandomIPK(isk *ISK, rng *core.RAND) IPK {
+	// random r_x, r_y
+	var ipk IPK
+
+	x := isk.x
+	y := isk.y
+
+	r_x := FP256BN.Random(rng)
+	r_y := FP256BN.Random(rng)
+
+	// calc X, Y, U_x, U_y
+	X := FP256BN.ECP2_generator().Mul(x)
+	Y := FP256BN.ECP2_generator().Mul(y)
+
+	U_x := FP256BN.ECP2_generator().Mul(r_x)
+	U_y := FP256BN.ECP2_generator().Mul(r_y)
+
+	// calc `c = H(U_x | U_y | X | Y)`
+
+	h := sha256.New()
+
+	var buf [2*int(FP256BN.MODBYTES) + 1]byte
+	U_x.ToBytes(buf[:], true)
+	h.Write(buf[:])
+
+	U_y.ToBytes(buf[:], true)
+	h.Write(buf[:])
+
+	X.ToBytes(buf[:], true)
+	h.Write(buf[:])
+
+	Y.ToBytes(buf[:], true)
+	h.Write(buf[:])
+
+	retH := h.Sum(nil)
+
+	c := FP256BN.FromBytes(retH)
+	// c := new(big.Int).SetBytes(buf)
+
+	// calc s_x, s_y
+	//     s_x = r_x + cx
+	//     s_y = r_y + cy
+	// todo: mod p
+	s_x := FP256BN.NewBIG()
+	s_x = FP256BN.Modmul(x, c, p())
+	s_x = FP256BN.Modadd(r_x, s_x, p())
+
+	s_y := FP256BN.NewBIG()
+	s_y = FP256BN.Modmul(y, c, p())
+	s_y = FP256BN.Modadd(r_y, s_y, p())
+
+	// copy pointers to ipk
+	ipk.X = X
+	ipk.Y = Y
+	ipk.c = c
+	ipk.s_x = s_x
+	ipk.s_y = s_y
+
+	return ipk
 }
 
 func InitRandom() *core.RAND {
@@ -45,6 +125,14 @@ func main() {
 	rng := InitRandom()
 	isk := RandomISK(rng)
 
+	ipk := RandomIPK(&isk, rng)
+
 	fmt.Println("x: %v", isk.x)
 	fmt.Println("y: %v", isk.y)
+
+	fmt.Println("X: %v", ipk.X)
+	fmt.Println("Y: %v", ipk.Y)
+	fmt.Println("c: %v", ipk.c)
+	fmt.Println("s_x: %v", ipk.s_x)
+	fmt.Println("s_y: %v", ipk.s_y)
 }
