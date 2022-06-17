@@ -120,3 +120,25 @@ func VerifyIPK(ipk *IPK) error {
 		return errors.New("IPK is not valid\n")
 	}
 }
+
+type Issuer struct {
+	ipk IPK
+	isk ISK
+}
+
+func NewIssuer(isk ISK, ipk IPK) Issuer {
+	var issuer Issuer
+	issuer.isk = isk
+	issuer.ipk = ipk
+
+	return issuer
+}
+
+func RandomIssuer(rng *core.RAND) Issuer {
+	isk := RandomISK(rng)
+	ipk := RandomIPK(&isk, rng)
+
+	issuer := NewIssuer(isk, ipk)
+
+	return issuer
+}
