@@ -6,11 +6,17 @@ import (
 	"miracl/core/FP256BN"
 )
 
+/**
+ * ISK: Issuer's Secret Key.
+ */
 type ISK struct {
 	x *FP256BN.BIG
 	y *FP256BN.BIG
 }
 
+/**
+ * Generate IPK with random.
+ */
 func RandomISK(rng *core.RAND) ISK {
 	var isk ISK
 	x := FP256BN.Random(rng)
@@ -22,6 +28,9 @@ func RandomISK(rng *core.RAND) ISK {
 	return isk
 }
 
+/**
+ * IPL: Issuer's Public Key.
+ */
 type IPK struct {
 	X   *FP256BN.ECP2
 	Y   *FP256BN.ECP2
@@ -30,6 +39,9 @@ type IPK struct {
 	s_y *FP256BN.BIG
 }
 
+/**
+ * Generate IPK with random and ISK.
+ */
 func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	// random r_x, r_y
 	var ipk IPK
@@ -76,6 +88,9 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	return ipk
 }
 
+/**
+ * Check IPK is valid.
+ */
 func VerifyIPK(ipk *IPK) error {
 	X := ipk.X
 	Y := ipk.Y

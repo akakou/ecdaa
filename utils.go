@@ -8,6 +8,9 @@ import (
 	"miracl/core/FP256BN"
 )
 
+/**
+ * Initialize random.
+ */
 func InitRandom() *core.RAND {
 	var seed [SEED_SIZE]byte
 	rng := core.NewRAND()
@@ -22,6 +25,11 @@ func InitRandom() *core.RAND {
 	return rng
 }
 
+/**
+ * Hash some ECP2 values.
+ *
+ * Hash some ECP2 values with SHA256 algorism, and it returns a big integer.
+ */
 func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
 	hasher := sha256.New()
 	var buf [2*int(FP256BN.MODBYTES) + 1]byte
