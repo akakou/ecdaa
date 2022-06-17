@@ -116,17 +116,17 @@ func VerifyIPK(ipk *IPK) error {
 	invC := FP256BN.NewBIGcopy(c)
 	invC.Invmodp(p())
 
-	tmpX1 := FP256BN.ECP2_generator().Mul(s_x)
-	tmpX2 := X.Mul(invC)
-	tmpX1.Add(tmpX2)
+	U_x1 := FP256BN.ECP2_generator().Mul(s_x)
+	U_x2 := X.Mul(invC)
+	U_x1.Add(U_x2)
 
-	// tmpX := tmpX1
+	// U_x := U_x1
 
-	tmpY1 := FP256BN.ECP2_generator().Mul(s_y)
-	tmpY2 := Y.Mul(invC)
-	tmpY1.Add(tmpY2)
+	U_y1 := FP256BN.ECP2_generator().Mul(s_y)
+	U_y2 := Y.Mul(invC)
+	U_y1.Add(U_y2)
 
-	// tmpY := tmpY1
+	// U_y := U_y1
 
 	cDash := HashECP2s(X, Y)
 
