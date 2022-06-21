@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/x509"
+	"go-tpm/tpm2"
 	"miracl/core"
 	"miracl/core/FP256BN"
 )
@@ -8,6 +10,11 @@ import (
 type JoinSeeds struct {
 	m *FP256BN.BIG
 	B *FP256BN.ECP
+}
+
+type JoinRequest struct {
+	public *tpm2.Public
+	cert   *x509.Certificate
 }
 
 /**
@@ -28,18 +35,26 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) *JoinSeeds {
 /**
  * Step2. generate request for join (by Member)
  */
-// func (_ *Member) gen_req_for_join(n FP256BN.BIG, rng *core.RAND) *JoinRequest, err {
-// 	var req JoinRequest
-// 	pub, err := CreateKey()
+func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
+	var req JoinRequest
+	pub, err := CreateKey()
 
-// 	if err != nil {
-// 		return err
-// 	}
+	if err != nil {
+		return nil, err
+	}
 
-// 	req.pub = pub
+	req.public = pub
 
-// 	return nil, req
-// }
+	cert, err := ReadEKCert()
+
+	if err != nil {
+		return nil, err
+	}
+
+	req.cert = cert
+
+	return &req, nil
+}
 
 // /**
 //  * Step3. make credential for join (by Issuer)
