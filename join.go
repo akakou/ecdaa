@@ -13,7 +13,7 @@ type JoinSeeds struct {
 /**
  * Step1. generate seed for join (by Issuer)
  */
-func (_ *Issuer) gen_seed_for_join(rng *core.RAND) *JoinSeeds {
+func (_ *Issuer) genSeedForJoin(rng *core.RAND) *JoinSeeds {
 	var seed JoinSeeds
 
 	m := FP256BN.Random(rng)
