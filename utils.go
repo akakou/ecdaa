@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"fmt"
 	"math/big"
 	"miracl/core"
 	"miracl/core/FP256BN"
@@ -45,4 +46,11 @@ func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
 	resBIG.Mod(p())
 
 	return resBIG
+}
+
+func HashFromBIGToECP(n *FP256BN.BIG) *FP256BN.ECP {
+	fmt.Println("[CRETIGAL WARNING]This implemation of hash is not seccure!!!!!")
+
+	g := g1()
+	return g.Mul(n)
 }

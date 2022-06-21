@@ -1,0 +1,60 @@
+package main
+
+import (
+	"miracl/core"
+	"miracl/core/FP256BN"
+)
+
+type JoinSeeds struct {
+	m *FP256BN.BIG
+	B *FP256BN.ECP
+}
+
+/**
+ * Step1. generate seed for join (by Issuer)
+ */
+func (_ *Issuer) gen_seed_for_join(rng *core.RAND) *JoinSeeds {
+	var seed JoinSeeds
+
+	m := FP256BN.Random(rng)
+	B := HashFromBIGToECP(m)
+
+	seed.m = m
+	seed.B = B
+
+	return &seed
+}
+
+/**
+ * Step2. generate request for join (by Member)
+ */
+// func (_ *Member) gen_req_for_join(n FP256BN.BIG, rng *core.RAND) *JoinRequest, err {
+// 	var req JoinRequest
+// 	pub, err := CreateKey()
+
+// 	if err != nil {
+// 		return err
+// 	}
+
+// 	req.pub = pub
+
+// 	return nil, req
+// }
+
+// /**
+//  * Step3. make credential for join (by Issuer)
+//  */
+// func (_ *Member) make_cred(n FP256BN.BIG, rng *core.RAND) JoinRequest {
+// 	var req JoinRequest
+
+// 	return req
+// }
+
+// /**
+//  * Step4. activate credential for join with TPM2_activate_credential (by Member)
+//  */
+// func (_ *Member) activate_cred(n FP256BN.BIG, rng *core.RAND) JoinRequest {
+// 	var req JoinRequest
+
+// 	return req
+// }
