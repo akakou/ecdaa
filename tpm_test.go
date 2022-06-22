@@ -22,7 +22,7 @@ func printPublic(p tpm2.Public, name string) {
 	fmt.Printf("\n----- ----- ----\n\n")
 }
 
-func TestTPM(t *testing.T) {
+func TestCreateKey(t *testing.T) {
 	key, err := CreateKey()
 
 	if err != nil {
@@ -31,3 +31,32 @@ func TestTPM(t *testing.T) {
 
 	fmt.Printf("%v\n", key)
 }
+
+func TestReadEKCert(t *testing.T) {
+	cert, err := ReadEKCert()
+
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	fmt.Printf("%v\n", cert.Raw)
+}
+
+// func TestNameMatchesPublicArea(t *testing.T) {
+// 	rwc, err := tpm2.OpenTPM("/dev/tpm0")
+// 	defer client.CheckedClose(t, rwc)
+
+// 	ek, err := client.EndorsementKeyRSA(rwc)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer ek.Close()
+
+// 	matches, err := ek.Name().MatchesPublic(ek.PublicArea())
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	if !matches {
+// 		t.Fatal("Returned name and computed name do not match")
+// 	}
+// }

@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"go-tpm/tpm2"
 
-	"github.com/google/go-tpm-tools/client"
+	"github.com/google/go-attestation/attest"
 )
 
 type PublicParams struct {
@@ -102,14 +102,19 @@ func CreateKey() (*tpm2.Public, error) {
 }
 
 func ReadEKCert() (*x509.Certificate, error) {
-	rw, err := tpm2.OpenTPM()
+	config := &attest.OpenConfig{}
+
+	tpm, err := attest.OpenTPM(config)
 	if err != nil {
 		return nil, err
 	}
-	defer rw.Close()
 
-	ek, err := client.EndorsementKeyECC(rw)
-	cert := ek.Cert()
+	eks, err := tpm.EKs()
+	if err != nil {
+		return nil, err
+	}
 
-	return cert, nil
+	ek := eks[0]
+
+	return ek.Certificate, err
 }
