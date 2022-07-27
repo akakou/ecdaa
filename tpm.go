@@ -1,6 +1,9 @@
 package main
 
 import (
+	"github.com/google/certificate-transparency-go/x509"
+
+	"github.com/google/go-attestation/attest"
 	"github.com/google/go-tpm/direct/helpers"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
@@ -146,21 +149,21 @@ func CreateKey() (*tpm2.CreateResponse, error) {
 	return rspC, nil
 }
 
-// func ReadEKCert() (*x509.Certificate, error) {
-// 	// config := &attest.OpenConfig{}
+func ReadEKCert() (*x509.Certificate, error) {
+	config := &attest.OpenConfig{}
 
-// 	// tpm, err := attest.OpenTPM(config)
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
+	tpm, err := attest.OpenTPM(config)
+	if err != nil {
+		return nil, err
+	}
 
-// 	// eks, err := tpm.EKs()
-// 	// if err != nil {
-// 	// 	return nil, err
-// 	// }
+	eks, err := tpm.EKs()
+	if err != nil {
+		return nil, err
+	}
 
-// 	// ek := eks[0]
+	ek := eks[0]
+	cert := ek.Certificate
 
-// 	// return ek.Certificate, err
-// 	return []byte("hello"), nil
-// }
+	return cert, err
+}
