@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/google/certificate-transparency-go/x509"
 
 	"github.com/google/go-attestation/attest"
@@ -14,6 +16,8 @@ import (
 	"github.com/google/go-tpm/direct/tpm2"
 	"github.com/google/go-tpm/direct/transport"
 )
+
+var password = []byte("hello")
 
 type PublicParams struct {
 	primary tpmt.Public
@@ -73,7 +77,7 @@ func publicParams() PublicParams {
 					Details: tpmu.AsymScheme{
 						ECDAA: &tpms.SigSchemeECDAA{
 							HashAlg: tpm.AlgSHA1,
-							Count:   1,
+							Count:   0,
 						},
 					},
 				},
@@ -91,7 +95,7 @@ func publicParams() PublicParams {
 	return params
 }
 
-func CreateKey() (*tpm2.NamedHandle, *tpms.ECCPoint, error) {
+func CreateKey() (*tpm2.AuthHandle, *tpms.ECCPoint, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
 		return nil, nil, err
@@ -100,11 +104,10 @@ func CreateKey() (*tpm2.NamedHandle, *tpms.ECCPoint, error) {
 	defer thetpm.Close()
 
 	params := publicParams()
-
-	password := []byte("hello")
+	auth := tpm2.PasswordAuth(password)
 
 	primary := tpm2.CreatePrimary{
-		PrimaryHandle: tpm.RHEndorsement,
+		PrimaryHandle: tpm.RHOwner,
 		InSensitive: tpm2b.SensitiveCreate{
 			Sensitive: tpms.SensitiveCreate{
 				UserAuth: tpm2b.Auth{
@@ -119,14 +122,14 @@ func CreateKey() (*tpm2.NamedHandle, *tpms.ECCPoint, error) {
 
 	rspCP, err := primary.Execute(thetpm)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("create primary: %v", err)
 	}
 
 	create := tpm2.Create{
 		ParentHandle: tpm2.AuthHandle{
 			Handle: rspCP.ObjectHandle,
 			Name:   rspCP.Name,
-			Auth:   tpm2.PasswordAuth(password),
+			Auth:   auth,
 		},
 
 		InSensitive: tpm2b.SensitiveCreate{
@@ -136,21 +139,22 @@ func CreateKey() (*tpm2.NamedHandle, *tpms.ECCPoint, error) {
 				},
 			},
 		},
+
 		InPublic: tpm2b.Public{
-			PublicArea: params.primary,
+			PublicArea: params.key,
 		},
 	}
 
 	rspC, err := create.Execute(thetpm)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("create: %v", err)
 	}
 
 	load := tpm2.Load{
 		ParentHandle: tpm2.AuthHandle{
 			Handle: rspCP.ObjectHandle,
 			Name:   rspCP.Name,
-			Auth:   tpm2.PasswordAuth(password),
+			Auth:   auth,
 		},
 		InPrivate: rspC.OutPrivate,
 		InPublic:  rspC.OutPublic,
@@ -158,12 +162,13 @@ func CreateKey() (*tpm2.NamedHandle, *tpms.ECCPoint, error) {
 
 	rspL, err := load.Execute(thetpm)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("load: %v", err)
 	}
 
-	handle := tpm2.NamedHandle{
+	handle := tpm2.AuthHandle{
 		Handle: rspL.ObjectHandle,
 		Name:   rspL.Name,
+		Auth:   auth,
 	}
 
 	return &handle, rspC.OutPublic.PublicArea.Unique.ECC, nil
@@ -186,4 +191,33 @@ func ReadEKCert() (*x509.Certificate, error) {
 	cert := ek.Certificate
 
 	return cert, err
+}
+
+func Commit(handle *tpm2.AuthHandle, P1 *tpms.ECCPoint, S2 *tpm2b.SensitiveData, Y2 *tpm2b.ECCParameter) (*tpm2.CommitResponse, error) {
+	thetpm, err := transport.OpenTPM("/dev/tpm0")
+	if err != nil {
+		return nil, err
+	}
+
+	defer thetpm.Close()
+
+	commit := tpm2.Commit{
+		SignHandle: tpm2.AuthHandle{
+			Handle: handle.Handle,
+			Name:   handle.Name,
+			Auth:   tpm2.PasswordAuth(password),
+		},
+		P1: tpm2b.ECCPoint{
+			Point: *P1,
+		},
+		S2: *S2,
+		Y2: *Y2,
+	}
+
+	rspC, err := commit.Execute(thetpm)
+	if err != nil {
+		return nil, fmt.Errorf("commit: %v", err)
+	}
+
+	return rspC, nil
 }

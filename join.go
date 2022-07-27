@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/certificate-transparency-go/x509"
 
+	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/tpm2"
 )
 
@@ -39,13 +41,40 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) *JoinSeeds {
  */
 func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
 	var req JoinRequest
-	_, _, err := CreateKey()
+	handle, _, err := CreateKey()
 
 	if err != nil {
 		return nil, err
 	}
 
 	cert, err := ReadEKCert()
+
+	if err != nil {
+		return nil, err
+	}
+
+	var xBuf [int(FP256BN.MODBYTES)]byte
+	var yBuf [int(FP256BN.MODBYTES)]byte
+
+	seeds.B.GetX().ToBytes(xBuf[:])
+	seeds.B.GetY().ToBytes(yBuf[:])
+
+	P1 := tpms.ECCPoint{
+		X: tpm2b.ECCParameter{
+			Buffer: xBuf[:],
+		},
+		Y: tpm2b.ECCParameter{
+			Buffer: yBuf[:],
+		},
+	}
+
+	S2 := tpm2b.SensitiveData{
+		Buffer: P1.X.Buffer,
+	}
+
+	Y2 := &P1.Y
+
+	_, err = Commit(handle, &P1, &S2, Y2)
 
 	if err != nil {
 		return nil, err
