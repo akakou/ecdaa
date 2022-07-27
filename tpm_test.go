@@ -24,13 +24,14 @@ func printPublic(p tpm2.Public, name string) {
 }
 
 func TestCreateKey(t *testing.T) {
-	key, err := CreateKey()
+	handle, key, err := CreateKey()
 
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
-	fmt.Printf("%v\n", key)
+	fmt.Printf("handle: %v\n", handle)
+	fmt.Printf("key: %v\n", key)
 }
 
 func TestReadEKCert(t *testing.T) {

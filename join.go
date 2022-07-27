@@ -39,7 +39,7 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) *JoinSeeds {
  */
 func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
 	var req JoinRequest
-	_, err := CreateKey()
+	_, _, err := CreateKey()
 
 	if err != nil {
 		return nil, err

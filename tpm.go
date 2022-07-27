@@ -91,10 +91,10 @@ func publicParams() PublicParams {
 	return params
 }
 
-func CreateKey() (*tpm2.LoadResponse, error) {
+func CreateKey() (*tpm2.NamedHandle, *tpms.ECCPoint, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	defer thetpm.Close()
@@ -119,7 +119,7 @@ func CreateKey() (*tpm2.LoadResponse, error) {
 
 	rspCP, err := primary.Execute(thetpm)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	create := tpm2.Create{
@@ -143,7 +143,7 @@ func CreateKey() (*tpm2.LoadResponse, error) {
 
 	rspC, err := create.Execute(thetpm)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	load := tpm2.Load{
@@ -158,12 +158,15 @@ func CreateKey() (*tpm2.LoadResponse, error) {
 
 	rspL, err := load.Execute(thetpm)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	
+	handle := tpm2.NamedHandle{
+		Handle: rspL.ObjectHandle,
+		Name:   rspL.Name,
+	}
 
-	return rspL, nil
+	return &handle, rspC.OutPublic.PublicArea.Unique.ECC, nil
 }
 
 func ReadEKCert() (*x509.Certificate, error) {
