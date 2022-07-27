@@ -91,7 +91,7 @@ func publicParams() PublicParams {
 	return params
 }
 
-func CreateKey() (*tpms.ECCPoint, error) {
+func CreateKey() (*tpm2.LoadResponse, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
 		return nil, err
@@ -146,7 +146,24 @@ func CreateKey() (*tpms.ECCPoint, error) {
 		return nil, err
 	}
 
-	return rspC.OutPublic.PublicArea.Unique.ECC, nil
+	load := tpm2.Load{
+		ParentHandle: tpm2.AuthHandle{
+			Handle: rspCP.ObjectHandle,
+			Name:   rspCP.Name,
+			Auth:   tpm2.PasswordAuth(password),
+		},
+		InPrivate: rspC.OutPrivate,
+		InPublic:  rspC.OutPublic,
+	}
+
+	rspL, err := load.Execute(thetpm)
+	if err != nil {
+		return nil, err
+	}
+
+	
+
+	return rspL, nil
 }
 
 func ReadEKCert() (*x509.Certificate, error) {
