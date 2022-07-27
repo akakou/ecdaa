@@ -1,120 +1,166 @@
 package main
 
 import (
-	"bytes"
 	"crypto/x509"
-	"go-tpm/tpm2"
 
-	"github.com/google/go-attestation/attest"
+	"github.com/google/go-tpm/direct/helpers"
+	"github.com/google/go-tpm/direct/structures/tpm"
+	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/direct/structures/tpma"
+	"github.com/google/go-tpm/direct/structures/tpms"
+	"github.com/google/go-tpm/direct/structures/tpmt"
+	"github.com/google/go-tpm/direct/structures/tpmu"
+	"github.com/google/go-tpm/direct/tpm2"
+	"github.com/google/go-tpm/direct/transport"
 )
 
 type PublicParams struct {
-	ecdsa tpm2.Public
-	ecdaa tpm2.Public
+	primary tpmt.Public
+	key     tpmt.Public
 }
 
 func publicParams() PublicParams {
 	var params PublicParams
 
-	ecdsa := tpm2.Public{
-		Type:       tpm2.AlgECC,
-		NameAlg:    tpm2.AlgSHA256,
-		Attributes: tpm2.FlagFixedTPM | tpm2.FlagFixedParent | tpm2.FlagSensitiveDataOrigin | tpm2.FlagUserWithAuth | tpm2.FlagDecrypt | tpm2.FlagRestricted,
-		ECCParameters: &tpm2.ECCParams{
-			Symmetric: &tpm2.SymScheme{Alg: tpm2.AlgAES, KeyBits: 128, Mode: tpm2.AlgCFB},
-			Sign: &tpm2.SigScheme{
-				Alg: tpm2.AlgNull,
+	primary := tpmt.Public{
+		Type:    tpm.AlgECC,
+		NameAlg: tpm.AlgSHA1,
+		ObjectAttributes: tpma.Object{
+			FixedTPM:            true,
+			FixedParent:         true,
+			SensitiveDataOrigin: true,
+			UserWithAuth:        true,
+			Decrypt:             true,
+			Restricted:          true,
+		},
+		Parameters: tpmu.PublicParms{
+			ECCDetail: &tpms.ECCParms{
+				Symmetric: tpmt.SymDefObject{
+					Algorithm: tpm.AlgAES,
+					KeyBits: tpmu.SymKeyBits{
+						AES: helpers.NewKeyBits(128),
+					},
+					Mode: tpmu.SymMode{
+						AES: helpers.NewAlgID(tpm.AlgCFB),
+					},
+				},
+				CurveID: tpm.ECCNistP256,
+				KDF: tpmt.KDFScheme{
+					Scheme: tpm.AlgNull,
+				},
 			},
-			CurveID: tpm2.CurveNISTP256,
-			KDF: &tpm2.KDFScheme{
-				Alg: tpm2.AlgNull,
-			},
-			Point: tpm2.ECPoint{},
 		},
 	}
 
-	ecdaa := tpm2.Public{
-		Type:       tpm2.AlgECC,
-		NameAlg:    tpm2.AlgSHA256,
-		Attributes: tpm2.FlagFixedTPM | tpm2.FlagFixedParent | tpm2.FlagSensitiveDataOrigin | tpm2.FlagUserWithAuth | tpm2.FlagSign,
-		ECCParameters: &tpm2.ECCParams{
-			Symmetric: &tpm2.SymScheme{
-				Alg: tpm2.AlgNull,
+	key := tpmt.Public{
+		Type:    tpm.AlgECC,
+		NameAlg: tpm.AlgSHA1,
+		ObjectAttributes: tpma.Object{
+			FixedTPM:            true,
+			FixedParent:         true,
+			UserWithAuth:        true,
+			SensitiveDataOrigin: true,
+			SignEncrypt:         true,
+		},
+		Parameters: tpmu.PublicParms{
+			ECCDetail: &tpms.ECCParms{
+				Symmetric: tpmt.SymDefObject{
+					Algorithm: tpm.AlgNull,
+				},
+				Scheme: tpmt.ECCScheme{
+					Scheme: tpm.AlgECDAA,
+					Details: tpmu.AsymScheme{
+						ECDAA: &tpms.SigSchemeECDAA{
+							HashAlg: tpm.AlgSHA1,
+							Count:   1,
+						},
+					},
+				},
+				CurveID: tpm.ECCBNP256,
+				KDF: tpmt.KDFScheme{
+					Scheme: tpm.AlgNull,
+				},
 			},
-			Sign: &tpm2.SigScheme{
-				Alg:   tpm2.AlgECDAA,
-				Hash:  tpm2.AlgSHA256,
-				Count: 1,
-			},
-			CurveID: tpm2.CurveBNP256,
-			KDF: &tpm2.KDFScheme{
-				Alg: tpm2.AlgNull,
-			},
-			Point: tpm2.ECPoint{},
 		},
 	}
 
-	params.ecdsa = ecdsa
-	params.ecdaa = ecdaa
+	params.primary = primary
+	params.key = key
 
 	return params
 }
 
-func CreateKey() (*tpm2.Public, error) {
-	pubParam := publicParams()
-	pcrSelection7 := tpm2.PCRSelection{Hash: tpm2.AlgSHA256, PCRs: []int{7}}
-
-	emptyPassword := ""
-
-	rw, err := tpm2.OpenTPM()
-	if err != nil {
-		return nil, err
-	}
-	defer rw.Close()
-
-	parentHandle, _, err := tpm2.CreatePrimary(rw, tpm2.HandleOwner, pcrSelection7, emptyPassword, emptyPassword, pubParam.ecdsa)
-	if err != nil {
-		return nil, err
-	}
-	defer tpm2.FlushContext(rw, parentHandle)
-
-	privateBlob, publicBlob, _, _, _, err := tpm2.CreateKey(rw, parentHandle, pcrSelection7, emptyPassword, emptyPassword, pubParam.ecdaa)
+func CreateKey() (*tpm2.CreateLoadedResponse, error) {
+	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
 		return nil, err
 	}
 
-	keyHandle, nameData, err := tpm2.Load(rw, parentHandle, emptyPassword, publicBlob, privateBlob)
+	defer thetpm.Close()
+
+	params := publicParams()
+
+	password := []byte("hello")
+
+	primary := tpm2.CreateLoaded{
+		ParentHandle: tpm.RHEndorsement,
+		InSensitive: tpm2b.SensitiveCreate{
+			Sensitive: tpms.SensitiveCreate{
+				UserAuth: tpm2b.Auth{
+					Buffer: password,
+				},
+			},
+		},
+		InPublic: tpm2b.Template{
+			Template: params.primary,
+		},
+	}
+
+	rspCP, err := primary.Execute(thetpm)
 	if err != nil {
 		return nil, err
 	}
-	defer tpm2.FlushContext(rw, keyHandle)
 
-	if _, err := tpm2.DecodeName(bytes.NewBuffer(nameData)); err != nil {
-		return nil, err
+	create := tpm2.CreateLoaded{
+		ParentHandle: tpm2.AuthHandle{
+			Handle: rspCP.ObjectHandle,
+			Name:   rspCP.Name,
+			Auth:   tpm2.PasswordAuth(password),
+		},
+
+		InSensitive: tpm2b.SensitiveCreate{
+			Sensitive: tpms.SensitiveCreate{
+				UserAuth: tpm2b.Auth{
+					Buffer: password,
+				},
+			},
+		},
+		InPublic: tpm2b.Template{},
 	}
 
-	pub, _, _, err := tpm2.ReadPublic(rw, keyHandle)
+	rspC, err := create.Execute(thetpm)
 	if err != nil {
 		return nil, err
 	}
 
-	return &pub, nil
+	return rspC, nil
 }
 
 func ReadEKCert() (*x509.Certificate, error) {
-	config := &attest.OpenConfig{}
+	// config := &attest.OpenConfig{}
 
-	tpm, err := attest.OpenTPM(config)
-	if err != nil {
-		return nil, err
-	}
+	// tpm, err := attest.OpenTPM(config)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	eks, err := tpm.EKs()
-	if err != nil {
-		return nil, err
-	}
+	// eks, err := tpm.EKs()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	ek := eks[0]
+	// ek := eks[0]
 
-	return ek.Certificate, err
+	// return ek.Certificate, err
+	return nil, nil
 }
