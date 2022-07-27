@@ -2,9 +2,10 @@ package main
 
 import (
 	"crypto/x509"
-	"go-tpm/tpm2"
 	"miracl/core"
 	"miracl/core/FP256BN"
+
+	"github.com/google/go-tpm/tpm2"
 )
 
 type JoinSeeds struct {
@@ -37,13 +38,13 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) *JoinSeeds {
  */
 func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
 	var req JoinRequest
-	pub, err := CreateKey()
+	// pub, err := CreateKey()
 
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	req.public = pub
+	// req.public = pub.OutPublic.PublicArea.Parameters.ECCDetail.Symmetric.KeyBits.AES.
 
 	cert, err := ReadEKCert()
 

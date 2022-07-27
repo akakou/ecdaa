@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"go-tpm/tpm2"
 	"log"
 	"testing"
+
+	"github.com/google/go-tpm/tpm2"
 )
 
 func printPublic(p tpm2.Public, name string) {
