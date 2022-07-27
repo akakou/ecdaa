@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto/x509"
-
 	"github.com/google/go-tpm/direct/helpers"
 	"github.com/google/go-tpm/direct/structures/tpm"
 	"github.com/google/go-tpm/direct/structures/tpm2b"
@@ -90,7 +88,7 @@ func publicParams() PublicParams {
 	return params
 }
 
-func CreateKey() (*tpm2.CreateLoadedResponse, error) {
+func CreateKey() (*tpm2.CreateResponse, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
 		return nil, err
@@ -102,8 +100,8 @@ func CreateKey() (*tpm2.CreateLoadedResponse, error) {
 
 	password := []byte("hello")
 
-	primary := tpm2.CreateLoaded{
-		ParentHandle: tpm.RHEndorsement,
+	primary := tpm2.CreatePrimary{
+		PrimaryHandle: tpm.RHEndorsement,
 		InSensitive: tpm2b.SensitiveCreate{
 			Sensitive: tpms.SensitiveCreate{
 				UserAuth: tpm2b.Auth{
@@ -111,8 +109,8 @@ func CreateKey() (*tpm2.CreateLoadedResponse, error) {
 				},
 			},
 		},
-		InPublic: tpm2b.Template{
-			Template: params.primary,
+		InPublic: tpm2b.Public{
+			PublicArea: params.primary,
 		},
 	}
 
@@ -121,7 +119,7 @@ func CreateKey() (*tpm2.CreateLoadedResponse, error) {
 		return nil, err
 	}
 
-	create := tpm2.CreateLoaded{
+	create := tpm2.Create{
 		ParentHandle: tpm2.AuthHandle{
 			Handle: rspCP.ObjectHandle,
 			Name:   rspCP.Name,
@@ -135,7 +133,9 @@ func CreateKey() (*tpm2.CreateLoadedResponse, error) {
 				},
 			},
 		},
-		InPublic: tpm2b.Template{},
+		InPublic: tpm2b.Public{
+			PublicArea: params.primary,
+		},
 	}
 
 	rspC, err := create.Execute(thetpm)
@@ -146,21 +146,21 @@ func CreateKey() (*tpm2.CreateLoadedResponse, error) {
 	return rspC, nil
 }
 
-func ReadEKCert() (*x509.Certificate, error) {
-	// config := &attest.OpenConfig{}
+// func ReadEKCert() (*x509.Certificate, error) {
+// 	// config := &attest.OpenConfig{}
 
-	// tpm, err := attest.OpenTPM(config)
-	// if err != nil {
-	// 	return nil, err
-	// }
+// 	// tpm, err := attest.OpenTPM(config)
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
 
-	// eks, err := tpm.EKs()
-	// if err != nil {
-	// 	return nil, err
-	// }
+// 	// eks, err := tpm.EKs()
+// 	// if err != nil {
+// 	// 	return nil, err
+// 	// }
 
-	// ek := eks[0]
+// 	// ek := eks[0]
 
-	// return ek.Certificate, err
-	return nil, nil
-}
+// 	// return ek.Certificate, err
+// 	return []byte("hello"), nil
+// }

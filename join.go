@@ -46,13 +46,13 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 
 	// req.public = pub.OutPublic.PublicArea.Parameters.ECCDetail.Symmetric.KeyBits.AES.
 
-	cert, err := ReadEKCert()
+	// cert, err := ReadEKCert()
 
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	req.cert = cert
+	// req.cert = cert
 
 	return &req, nil
 }
