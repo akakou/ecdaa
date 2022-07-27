@@ -1,9 +1,10 @@
 package main
 
 import (
-	"crypto/x509"
 	"miracl/core"
 	"miracl/core/FP256BN"
+
+	"github.com/google/certificate-transparency-go/x509"
 
 	"github.com/google/go-tpm/tpm2"
 )
@@ -38,19 +39,19 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) *JoinSeeds {
  */
 func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
 	var req JoinRequest
-	// pub, err := CreateKey()
+	_, err := CreateKey()
 
-	// if err != nil {
-	// 	return nil, err
-	// }
+	if err != nil {
+		return nil, err
+	}
 
-	// cert, err = ReadEKCert()
+	cert, err := ReadEKCert()
 
-	// if err != nil {
-	// 	return nil, err
-	// }
+	if err != nil {
+		return nil, err
+	}
 
-	// req.cert = cert
+	req.cert = cert
 
 	return &req, nil
 }

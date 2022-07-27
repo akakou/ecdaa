@@ -15,6 +15,13 @@ import (
 	"github.com/google/go-tpm/direct/transport"
 )
 
+type TPMSECCPoint struct {
+	// X coordinate
+	X tpm2b.ECCParameter
+	// Y coordinate
+	Y tpm2b.ECCParameter
+}
+
 type PublicParams struct {
 	primary tpmt.Public
 	key     tpmt.Public
@@ -91,7 +98,10 @@ func publicParams() PublicParams {
 	return params
 }
 
-func CreateKey() (*tpm2.CreateResponse, error) {
+func CreateKey() (*TPMSECCPoint, error) {
+	// todo: use internal.TPMSECCPoint directory
+	var pubkey TPMSECCPoint
+
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
 		return nil, err
@@ -161,7 +171,10 @@ func CreateKey() (*tpm2.CreateResponse, error) {
 		return nil, err
 	}
 
-	return rspC, nil
+	pubkey.X = rspC.OutPublic.PublicArea.Unique.ECC.X
+	pubkey.Y = rspC.OutPublic.PublicArea.Unique.ECC.Y
+
+	return &pubkey, nil
 }
 
 func ReadEKCert() (*x509.Certificate, error) {
