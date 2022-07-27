@@ -146,6 +146,21 @@ func CreateKey() (*tpm2.CreateResponse, error) {
 		return nil, err
 	}
 
+	load := tpm2.Load{
+		ParentHandle: tpm2.AuthHandle{
+			Handle: rspCP.ObjectHandle,
+			Name:   rspCP.Name,
+			Auth:   tpm2.PasswordAuth(password),
+		},
+		InPrivate: rspC.OutPrivate,
+		InPublic:  rspC.OutPublic,
+	}
+
+	_, err = load.Execute(thetpm)
+	if err != nil {
+		return nil, err
+	}
+
 	return rspC, nil
 }
 
