@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"miracl/core/FP256BN"
 )
 
@@ -27,15 +28,14 @@ func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
 	return resBIG
 }
 
-func HashToECP(m *FP256BN.BIG) *FP256BN.ECP {
+func HashToECP(m *FP256BN.BIG) (*FP256BN.ECP, error) {
 	var ecp *FP256BN.ECP
-	isOnCurve := false
 
 	var buf [FP256BN.MODBYTES]byte
 	m.ToBytes(buf[:])
 
 	var i uint32
-	for ; i < 232 && !isOnCurve; i++ {
+	for i = 0; i <= 232; i++ {
 		// This process corresponds to BigNumberToB.
 		// Compute BigNumberToB(i,4) on FIDO's spec indicated
 		// that it should continue to find the number which
@@ -48,16 +48,14 @@ func HashToECP(m *FP256BN.BIG) *FP256BN.ECP {
 		hash := hasher.Sum(nil)
 
 		x := FP256BN.FromBytes(hash)
+		x.Mod(p())
 
-		z := x.Powmod(FP256BN.NewBIGint(3), p())
-		z = x.Plus(b())
-		z.Mod(p())
+		ecp = FP256BN.NewECPbig(x)
 
-		y := FP256BN.Modsqr(z, p())
-		ecp = FP256BN.NewECPbigs(x, y)
-
-		isOnCurve = isOnECPCurve(ecp)
+		if !ecp.Is_infinity() {
+			return ecp, nil
+		}
 	}
 
-	return ecp
+	return nil, fmt.Errorf("error: Hashing failed")
 }
