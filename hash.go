@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"miracl/core/FP256BN"
 )
 
@@ -28,13 +27,14 @@ func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
 	return resBIG
 }
 
-func HashToECP(m *FP256BN.BIG) {
-	var i uint32
+func HashToECP(m *FP256BN.BIG) *FP256BN.ECP {
+	var ecp *FP256BN.ECP
 	isOnCurve := false
 
 	var buf [FP256BN.MODBYTES]byte
 	m.ToBytes(buf[:])
 
+	var i uint32
 	for ; i < 232 && !isOnCurve; i++ {
 		// This process corresponds to BigNumberToB.
 		// Compute BigNumberToB(i,4) on FIDO's spec indicated
@@ -54,10 +54,10 @@ func HashToECP(m *FP256BN.BIG) {
 		z.Mod(p())
 
 		y := FP256BN.Modsqr(z, p())
-		ecp := FP256BN.NewECPbigs(x, y)
+		ecp = FP256BN.NewECPbigs(x, y)
 
 		isOnCurve = isOnECPCurve(ecp)
-
-		fmt.Printf("y(%v): %v\n", isOnCurve, y)
 	}
+
+	return ecp
 }
