@@ -28,16 +28,12 @@ func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
 	return resBIG
 }
 
-func HashFromBIGToECP(n *FP256BN.BIG) *FP256BN.ECP {
-	fmt.Println("[CRETIGAL WARNING]This implemation of hash is not seccure!!!!!")
-
-	g := g1()
-	return g.Mul(n)
-}
-
-func HashToECP(message []byte) {
+func HashToECP(m *FP256BN.BIG) {
 	var i uint32
 	isOnCurve := false
+
+	var buf [FP256BN.MODBYTES]byte
+	m.ToBytes(buf[:])
 
 	for ; i < 232 && !isOnCurve; i++ {
 		// This process corresponds to BigNumberToB.
@@ -48,7 +44,7 @@ func HashToECP(message []byte) {
 
 		hasher := sha256.New()
 		hasher.Write(numBuf[:])
-		hasher.Write(message[:])
+		hasher.Write(buf[:])
 		hash := hasher.Sum(nil)
 
 		x := FP256BN.FromBytes(hash)
