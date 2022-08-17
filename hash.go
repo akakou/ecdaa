@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"miracl/core/FP256BN"
 )
@@ -28,11 +29,8 @@ func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
 	return resBIG
 }
 
-func HashToECP(m *FP256BN.BIG) (*FP256BN.ECP, error) {
+func HashToECP(m []byte) (*FP256BN.ECP, uint32, error) {
 	var ecp *FP256BN.ECP
-
-	var buf [FP256BN.MODBYTES]byte
-	m.ToBytes(buf[:])
 
 	var i uint32
 	for i = 0; i <= 232; i++ {
@@ -40,22 +38,25 @@ func HashToECP(m *FP256BN.BIG) (*FP256BN.ECP, error) {
 		// Compute BigNumberToB(i,4) on FIDO's spec indicated
 		// that it should continue to find the number which
 		// can be use for calculate the correct value on next step.
-		numBuf := i32tob(i)
+		numBuf := make([]byte, binary.MaxVarintLen32)
+		binary.PutVarint(numBuf, int64(i))
 
+		//  x = H(numBuf | m)
 		hasher := sha256.New()
 		hasher.Write(numBuf[:])
-		hasher.Write(buf[:])
+		hasher.Write(m[:])
 		hash := hasher.Sum(nil)
 
 		x := FP256BN.FromBytes(hash)
 		x.Mod(p())
 
 		ecp = FP256BN.NewECPbig(x)
+		ecp = ecp.Mul(FP256BN.NewBIGint(FP256BN.CURVE_Cof_I))
 
 		if !ecp.Is_infinity() {
-			return ecp, nil
+			return ecp, i, nil
 		}
 	}
 
-	return nil, fmt.Errorf("error: Hashing failed")
+	return nil, 0, fmt.Errorf("error: Hashing failed")
 }
