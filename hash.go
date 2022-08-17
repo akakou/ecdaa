@@ -16,7 +16,7 @@ func NewHash() Hash {
 }
 
 func (h *Hash) WriteECP(n ...*FP256BN.ECP) {
-	var buf [int(FP256BN.MODBYTES)]byte
+	var buf [int(FP256BN.MODBYTES) + 1]byte
 
 	for _, v := range n {
 		v.ToBytes(buf[:], true)
