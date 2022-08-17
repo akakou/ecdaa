@@ -65,7 +65,9 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	U_y := g2().Mul(r_y)
 
 	// calc `c = H(U_x | U_y | g2 | X | Y)`
-	c := HashECP2s(U_x, U_y, g2(), X, Y)
+	hash := NewHash()
+	hash.WriteECP2(U_x, U_y, g2(), X, Y)
+	c := hash.SumToBIG()
 
 	// calc s_x, s_y
 	//     s_x = r_x + cx
@@ -112,7 +114,9 @@ func VerifyIPK(ipk *IPK) error {
 	U_y.Add(tmp)
 
 	// calc `c' = H(U_x | U_y | g2 | X | Y)`
-	cDash := HashECP2s(U_x, U_y, g2(), X, Y)
+	hash := NewHash()
+	hash.WriteECP2(U_x, U_y, g2(), X, Y)
+	cDash := hash.SumToBIG()
 
 	if FP256BN.Comp(c, cDash) == 0 {
 		return nil

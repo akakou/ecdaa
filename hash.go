@@ -7,31 +7,67 @@ import (
 	"miracl/core/FP256BN"
 )
 
-/**
- * Hash some ECP2 values.
- *
- * Hash some ECP2 values with SHA256 algorism, and it returns a big integer.
- */
-func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
-	hasher := sha256.New()
+type Hash struct {
+	B [][]byte
+}
+
+func NewHash() Hash {
+	return Hash{}
+}
+
+func (h *Hash) WriteECP(n ...*FP256BN.ECP) {
+	var buf [int(FP256BN.MODBYTES)]byte
+
+	for _, v := range n {
+		v.ToBytes(buf[:], true)
+		h.B = append(h.B, buf[:])
+	}
+}
+
+func (h *Hash) WriteECP2(n ...*FP256BN.ECP2) {
 	var buf [2*int(FP256BN.MODBYTES) + 1]byte
 
 	for _, v := range n {
 		v.ToBytes(buf[:], true)
-		hasher.Write(buf[:])
+		h.B = append(h.B, buf[:])
+	}
+}
+
+func (h *Hash) WriteBIG(n ...*FP256BN.BIG) {
+	var buf [int(FP256BN.MODBYTES)]byte
+
+	for _, v := range n {
+		v.ToBytes(buf[:])
+		h.B = append(h.B, buf[:])
+	}
+}
+
+func (h *Hash) WriteBytes(n ...[]byte) {
+	for _, v := range n {
+		h.B = append(h.B, v)
+	}
+}
+
+func (h *Hash) SumToBytes() []byte {
+	hash := sha256.New()
+
+	for _, v := range h.B {
+		hash.Write(v)
 	}
 
-	retHash := hasher.Sum(nil)
-	resBIG := FP256BN.FromBytes(retHash)
+	retHash := hash.Sum(nil)
+	return retHash
+}
 
+func (h *Hash) SumToBIG() *FP256BN.BIG {
+	retHash := h.SumToBytes()
+	resBIG := FP256BN.FromBytes(retHash)
 	resBIG.Mod(p())
 
 	return resBIG
 }
 
-func HashToECP(m []byte) (*FP256BN.ECP, uint32, error) {
-	var ecp *FP256BN.ECP
-
+func (h *Hash) HashToECP() (*FP256BN.ECP, uint32, error) {
 	var i uint32
 	for i = 0; i <= 232; i++ {
 		// This process corresponds to BigNumberToB.
@@ -41,16 +77,11 @@ func HashToECP(m []byte) (*FP256BN.ECP, uint32, error) {
 		numBuf := make([]byte, binary.MaxVarintLen32)
 		binary.PutVarint(numBuf, int64(i))
 
-		//  x = H(numBuf | m)
-		hasher := sha256.New()
-		hasher.Write(numBuf[:])
-		hasher.Write(m[:])
-		hash := hasher.Sum(nil)
+		h.B = append([][]byte{numBuf}, h.B...)
 
-		x := FP256BN.FromBytes(hash)
-		x.Mod(p())
+		x := h.SumToBIG()
 
-		ecp = FP256BN.NewECPbig(x)
+		ecp := FP256BN.NewECPbig(x)
 		ecp = ecp.Mul(FP256BN.NewBIGint(FP256BN.CURVE_Cof_I))
 
 		if !ecp.Is_infinity() {

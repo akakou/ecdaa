@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
@@ -78,7 +77,10 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 		},
 	}
 
-	B, i, err := HashToECP(msg)
+	hash := NewHash()
+	hash.WriteBytes(msg)
+
+	B, i, err := hash.HashToECP()
 
 	if err != nil {
 		return nil, err
@@ -98,17 +100,20 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 		Buffer: y2Buf[:],
 	}
 
-	fmt.Printf("p1.x : %v\n", P1.X.Buffer)
-	fmt.Printf("p1.y : %v\n", P1.Y.Buffer)
-	fmt.Printf("s2   : %v\n", S2.Buffer)
-	fmt.Printf("y2   : %v\n", Y2.Buffer)
-	fmt.Printf("B.Y2   : %v\n", B.GetY().ToString())
-
-	_, err = Commit(handle, &P1, &S2, &Y2)
+	comResp, err := Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
 		return nil, err
 	}
+
+	var buffer []byte
+	buffer = append(buffer, comResp.K.Point.X.Buffer...)
+	buffer = append(buffer, comResp.K.Point.Y.Buffer...)
+
+	buffer = append(buffer, comResp.E.Point.X.Buffer...)
+	buffer = append(buffer, comResp.E.Point.Y.Buffer...)
+
+	buffer = append(buffer, msg...)
 
 	req.cert = cert
 
