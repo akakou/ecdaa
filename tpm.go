@@ -29,7 +29,7 @@ func publicParams() PublicParams {
 
 	primary := tpmt.Public{
 		Type:    tpm.AlgECC,
-		NameAlg: tpm.AlgSHA1,
+		NameAlg: tpm.AlgSHA256,
 		ObjectAttributes: tpma.Object{
 			FixedTPM:            true,
 			FixedParent:         true,
@@ -59,7 +59,7 @@ func publicParams() PublicParams {
 
 	key := tpmt.Public{
 		Type:    tpm.AlgECC,
-		NameAlg: tpm.AlgSHA1,
+		NameAlg: tpm.AlgSHA256,
 		ObjectAttributes: tpma.Object{
 			FixedTPM:            true,
 			FixedParent:         true,
@@ -76,7 +76,7 @@ func publicParams() PublicParams {
 					Scheme: tpm.AlgECDAA,
 					Details: tpmu.AsymScheme{
 						ECDAA: &tpms.SigSchemeECDAA{
-							HashAlg: tpm.AlgSHA1,
+							HashAlg: tpm.AlgSHA256,
 							Count:   0,
 						},
 					},
