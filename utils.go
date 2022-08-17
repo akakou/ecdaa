@@ -22,15 +22,3 @@ func InitRandom() *core.RAND {
 
 	return rng
 }
-
-// func reverse(src []FP256BN.Chunk) []FP256BN.Chunk {
-// 	dest := make([]FP256BN.Chunk, len(src))
-
-// 	copy(dest, src)
-
-// 	for i, j := 0, len(dest)-1; i < j; i, j = i+1, j-1 {
-// 		dest[i], dest[j] = dest[j], dest[i]
-// 	}
-
-// 	return dest
-// }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -19,7 +18,4 @@ func TestJoin(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-
-	fmt.Printf("m=%v, B=%v\n", seed.m, seed.B)
-
 }
