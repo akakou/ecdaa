@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/binary"
+	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
@@ -24,22 +26,29 @@ type JoinRequest struct {
 /**
  * Step1. generate seed for join (by Issuer)
  */
-func (_ *Issuer) genSeedForJoin(rng *core.RAND) *JoinSeeds {
+func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, error) {
 	var seed JoinSeeds
 
-	m := FP256BN.Random(rng)
-	B := HashFromBIGToECP(m)
+	// m := FP256BN.Random(rng)
+	// m := g1().GetX()
+	// B, i, err := HashToECP([]byte{0x01})
 
-	seed.m = m
-	seed.B = B
+	// if err != nil {
+	// 	return nil, fmt.Errorf("%v\n", err)
+	// }
 
-	return &seed
+	// seed.m = m
+	// seed.B = B
+
+	return &seed, nil
 }
 
 /**
  * Step2. generate request for join (by Member)
  */
 func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
+	msg := []byte("BASENAME")
+
 	var req JoinRequest
 	handle, _, err := CreateKey()
 
@@ -55,9 +64,10 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 
 	var xBuf [int(FP256BN.MODBYTES)]byte
 	var yBuf [int(FP256BN.MODBYTES)]byte
+	var y2Buf [int(FP256BN.MODBYTES)]byte
 
-	seeds.B.GetX().ToBytes(xBuf[:])
-	seeds.B.GetY().ToBytes(yBuf[:])
+	g1().GetX().ToBytes(xBuf[:])
+	g1().GetY().ToBytes(yBuf[:])
 
 	P1 := tpms.ECCPoint{
 		X: tpm2b.ECCParameter{
@@ -68,13 +78,33 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 		},
 	}
 
-	S2 := tpm2b.SensitiveData{
-		Buffer: P1.X.Buffer,
+	B, i, err := HashToECP(msg)
+
+	if err != nil {
+		return nil, err
 	}
 
-	Y2 := &P1.Y
+	numBuf := make([]byte, binary.MaxVarintLen32)
+	binary.PutVarint(numBuf, int64(i))
 
-	_, err = Commit(handle, &P1, &S2, Y2)
+	s2Buf := append(numBuf, msg...)
+	B.GetY().ToBytes(y2Buf[:])
+
+	S2 := tpm2b.SensitiveData{
+		Buffer: s2Buf[:],
+	}
+
+	Y2 := tpm2b.ECCParameter{
+		Buffer: y2Buf[:],
+	}
+
+	fmt.Printf("p1.x : %v\n", P1.X.Buffer)
+	fmt.Printf("p1.y : %v\n", P1.Y.Buffer)
+	fmt.Printf("s2   : %v\n", S2.Buffer)
+	fmt.Printf("y2   : %v\n", Y2.Buffer)
+	fmt.Printf("B.Y2   : %v\n", B.GetY().ToString())
+
+	_, err = Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
 		return nil, err
