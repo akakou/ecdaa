@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"math/big"
 	"miracl/core"
-	"miracl/core/FP256BN"
 )
 
 /**
@@ -22,28 +21,6 @@ func InitRandom() *core.RAND {
 	rng.Seed(SEED_SIZE, seed[:])
 
 	return rng
-}
-
-func isOnECPCurve(point *FP256BN.ECP) bool {
-	point.Affine()
-
-	zero := FP256BN.NewBIGint(0)
-	copied := FP256BN.NewECPbigs(zero, point.GetY())
-
-	cofactor := FP256BN.NewBIGint(FP256BN.CURVE_Cof_I)
-	unity := FP256BN.NewBIGint(1)
-
-	if FP256BN.Comp(cofactor, unity) == 0 {
-		return true
-	}
-
-	suspectedInf := copied.Mul(cofactor)
-
-	if suspectedInf.Is_infinity() {
-		return false
-	}
-
-	return true
 }
 
 // func reverse(src []FP256BN.Chunk) []FP256BN.Chunk {
