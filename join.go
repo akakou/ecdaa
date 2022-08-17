@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
@@ -106,14 +107,23 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 		return nil, err
 	}
 
-	var buffer []byte
-	buffer = append(buffer, comResp.K.Point.X.Buffer...)
-	buffer = append(buffer, comResp.K.Point.Y.Buffer...)
+	hash = NewHash()
 
-	buffer = append(buffer, comResp.E.Point.X.Buffer...)
-	buffer = append(buffer, comResp.E.Point.Y.Buffer...)
+	// U1
+	K := ParseECP2FromTPMFmt(&comResp.K)
+	E := ParseECP2FromTPMFmt(&comResp.E)
 
-	buffer = append(buffer, msg...)
+	hash.WriteECP2(K, E)
+
+	// P1
+	hash.WriteECP(B)
+
+	// Q
+	hash.WriteECP2(g2())
+
+	c2 := hash.SumToBIG()
+
+	fmt.Printf("hash: %v\n", c2)
 
 	req.cert = cert
 
