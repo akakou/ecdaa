@@ -46,14 +46,6 @@ func isOnECPCurve(point *FP256BN.ECP) bool {
 	return true
 }
 
-func i32tob(val uint32) []byte {
-	r := make([]byte, 4)
-	for i := uint32(0); i < 4; i++ {
-		r[i] = byte((val >> (8 * i)) & 0xff)
-	}
-	return r
-}
-
 // func reverse(src []FP256BN.Chunk) []FP256BN.Chunk {
 // 	dest := make([]FP256BN.Chunk, len(src))
 
