@@ -104,7 +104,7 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	comResp, err := Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("commmit error: %v\n", err)
 	}
 
 	hash = NewHash()
@@ -124,6 +124,15 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	c2 := hash.SumToBIG()
 
 	fmt.Printf("hash: %v\n", c2)
+
+	var c2bytes [32]byte
+	sign, err := Sign(c2bytes[:], comResp.Counter, handle)
+
+	if err != nil {
+		return nil, fmt.Errorf("sign error: %v\n", err)
+	}
+
+	fmt.Printf("%v\n", sign.Signature)
 
 	req.cert = cert
 

@@ -221,3 +221,41 @@ func Commit(handle *tpm2.AuthHandle, P1 *tpms.ECCPoint, S2 *tpm2b.SensitiveData,
 
 	return rspC, nil
 }
+
+func Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error) {
+	thetpm, err := transport.OpenTPM("/dev/tpm0")
+	if err != nil {
+		return nil, err
+	}
+
+	sign := tpm2.Sign{
+		KeyHandle: tpm2.AuthHandle{
+			Handle: handle.Handle,
+			Name:   handle.Name,
+			Auth:   tpm2.PasswordAuth(password),
+		},
+		Digest: tpm2b.Digest{
+			Buffer: digest[:],
+		},
+		InScheme: tpmt.SigScheme{
+			Scheme: tpm.AlgECDAA,
+			Details: tpmu.SigScheme{
+				ECDAA: &tpms.SchemeECDAA{
+					HashAlg: tpm.AlgSHA256,
+					Count:   count,
+				},
+			},
+		},
+		Validation: tpmt.TKHashCheck{
+			Tag: tpm.STHashCheck,
+		},
+	}
+
+	rspS, err := sign.Execute(thetpm)
+
+	if err != nil {
+		return nil, fmt.Errorf("sign: %v", err)
+	}
+
+	return rspS, nil
+}
