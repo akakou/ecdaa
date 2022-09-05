@@ -3,34 +3,24 @@ package main
 import (
 	"fmt"
 
-	"github.com/google/certificate-transparency-go/x509"
-
-	"github.com/google/go-attestation/attest"
-	"github.com/google/go-tpm/direct/helpers"
-	"github.com/google/go-tpm/direct/structures/tpm"
-	"github.com/google/go-tpm/direct/structures/tpm2b"
-	"github.com/google/go-tpm/direct/structures/tpma"
-	"github.com/google/go-tpm/direct/structures/tpms"
-	"github.com/google/go-tpm/direct/structures/tpmt"
-	"github.com/google/go-tpm/direct/structures/tpmu"
-	"github.com/google/go-tpm/direct/tpm2"
-	"github.com/google/go-tpm/direct/transport"
+	"github.com/google/go-tpm/tpm2"
+	"github.com/google/go-tpm/tpm2/transport"
 )
 
 var password = []byte("hello")
 
 type PublicParams struct {
-	primary tpmt.Public
-	key     tpmt.Public
+	primary tpm2.TPMTPublic
+	key     tpm2.TPMTPublic
 }
 
 func publicParams() PublicParams {
 	var params PublicParams
 
-	primary := tpmt.Public{
-		Type:    tpm.AlgECC,
-		NameAlg: tpm.AlgSHA256,
-		ObjectAttributes: tpma.Object{
+	primary := tpm2.TPMTPublic{
+		Type:    tpm2.TPMAlgECC,
+		NameAlg: tpm2.TPMAlgSHA256,
+		ObjectAttributes: tpm2.TPMAObject{
 			FixedTPM:            true,
 			FixedParent:         true,
 			SensitiveDataOrigin: true,
@@ -38,52 +28,52 @@ func publicParams() PublicParams {
 			Decrypt:             true,
 			Restricted:          true,
 		},
-		Parameters: tpmu.PublicParms{
-			ECCDetail: &tpms.ECCParms{
-				Symmetric: tpmt.SymDefObject{
-					Algorithm: tpm.AlgAES,
-					KeyBits: tpmu.SymKeyBits{
-						AES: helpers.NewKeyBits(128),
+		Parameters: tpm2.TPMUPublicParms{
+			ECCDetail: &tpm2.TPMSECCParms{
+				Symmetric: tpm2.TPMTSymDefObject{
+					Algorithm: tpm2.TPMAlgAES,
+					KeyBits: tpm2.TPMUSymKeyBits{
+						AES: tpm2.NewKeyBits(128),
 					},
-					Mode: tpmu.SymMode{
-						AES: helpers.NewAlgID(tpm.AlgCFB),
+					Mode: tpm2.TPMUSymMode{
+						AES: tpm2.NewAlgID(tpm2.TPMAlgCFB),
 					},
 				},
-				CurveID: tpm.ECCNistP256,
-				KDF: tpmt.KDFScheme{
-					Scheme: tpm.AlgNull,
+				CurveID: tpm2.TPMECCNistP256,
+				KDF: tpm2.TPMTKDFScheme{
+					Scheme: tpm2.TPMAlgNull,
 				},
 			},
 		},
 	}
 
-	key := tpmt.Public{
-		Type:    tpm.AlgECC,
-		NameAlg: tpm.AlgSHA256,
-		ObjectAttributes: tpma.Object{
+	key := tpm2.TPMTPublic{
+		Type:    tpm2.TPMAlgECC,
+		NameAlg: tpm2.TPMAlgSHA256,
+		ObjectAttributes: tpm2.TPMAObject{
 			FixedTPM:            true,
 			FixedParent:         true,
 			UserWithAuth:        true,
 			SensitiveDataOrigin: true,
 			SignEncrypt:         true,
 		},
-		Parameters: tpmu.PublicParms{
-			ECCDetail: &tpms.ECCParms{
-				Symmetric: tpmt.SymDefObject{
-					Algorithm: tpm.AlgNull,
+		Parameters: tpm2.TPMUPublicParms{
+			ECCDetail: &tpm2.TPMSECCParms{
+				Symmetric: tpm2.TPMTSymDefObject{
+					Algorithm: tpm2.TPMAlgNull,
 				},
-				Scheme: tpmt.ECCScheme{
-					Scheme: tpm.AlgECDAA,
-					Details: tpmu.AsymScheme{
-						ECDAA: &tpms.SigSchemeECDAA{
-							HashAlg: tpm.AlgSHA256,
+				Scheme: tpm2.TPMTECCScheme{
+					Scheme: tpm2.TPMAlgECDAA,
+					Details: tpm2.TPMUAsymScheme{
+						ECDAA: &tpm2.TPMSSigSchemeECDAA{
+							HashAlg: tpm2.TPMAlgSHA256,
 							Count:   0,
 						},
 					},
 				},
-				CurveID: tpm.ECCBNP256,
-				KDF: tpmt.KDFScheme{
-					Scheme: tpm.AlgNull,
+				CurveID: tpm2.TPMECCBNP256,
+				KDF: tpm2.TPMTKDFScheme{
+					Scheme: tpm2.TPMAlgNull,
 				},
 			},
 		},
@@ -95,7 +85,7 @@ func publicParams() PublicParams {
 	return params
 }
 
-func CreateKey() (*tpm2.AuthHandle, *tpms.ECCPoint, error) {
+func CreateKey() (*tpm2.AuthHandle, *tpm2.TPMSECCPoint, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
 		return nil, nil, err
@@ -107,15 +97,15 @@ func CreateKey() (*tpm2.AuthHandle, *tpms.ECCPoint, error) {
 	auth := tpm2.PasswordAuth(password)
 
 	primary := tpm2.CreatePrimary{
-		PrimaryHandle: tpm.RHOwner,
-		InSensitive: tpm2b.SensitiveCreate{
-			Sensitive: tpms.SensitiveCreate{
-				UserAuth: tpm2b.Auth{
+		PrimaryHandle: tpm2.TPMRHOwner,
+		InSensitive: tpm2.TPM2BSensitiveCreate{
+			Sensitive: tpm2.TPMSSensitiveCreate{
+				UserAuth: tpm2.TPM2BAuth{
 					Buffer: password,
 				},
 			},
 		},
-		InPublic: tpm2b.Public{
+		InPublic: tpm2.TPM2BPublic{
 			PublicArea: params.primary,
 		},
 	}
@@ -132,15 +122,15 @@ func CreateKey() (*tpm2.AuthHandle, *tpms.ECCPoint, error) {
 			Auth:   auth,
 		},
 
-		InSensitive: tpm2b.SensitiveCreate{
-			Sensitive: tpms.SensitiveCreate{
-				UserAuth: tpm2b.Auth{
+		InSensitive: tpm2.TPM2BSensitiveCreate{
+			Sensitive: tpm2.TPMSSensitiveCreate{
+				UserAuth: tpm2.TPM2BAuth{
 					Buffer: password,
 				},
 			},
 		},
 
-		InPublic: tpm2b.Public{
+		InPublic: tpm2.TPM2BPublic{
 			PublicArea: params.key,
 		},
 	}
@@ -174,26 +164,26 @@ func CreateKey() (*tpm2.AuthHandle, *tpms.ECCPoint, error) {
 	return &handle, rspC.OutPublic.PublicArea.Unique.ECC, nil
 }
 
-func ReadEKCert() (*x509.Certificate, error) {
-	config := &attest.OpenConfig{}
+// func ReadEKCert() (*x509.Certificate, error) {
+// 	config := &attest.OpenConfig{}
 
-	tpm, err := attest.OpenTPM(config)
-	if err != nil {
-		return nil, err
-	}
+// 	tpm, err := attest.OpenTPM(config)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	eks, err := tpm.EKs()
-	if err != nil {
-		return nil, err
-	}
+// 	eks, err := tpm.EKs()
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	ek := eks[0]
-	cert := ek.Certificate
+// 	ek := eks[0]
+// 	cert := ek.Certificate
 
-	return cert, err
-}
+// 	return cert, err
+// }
 
-func Commit(handle *tpm2.AuthHandle, P1 *tpms.ECCPoint, S2 *tpm2b.SensitiveData, Y2 *tpm2b.ECCParameter) (*tpm2.CommitResponse, error) {
+func Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
 		return nil, err
@@ -207,7 +197,7 @@ func Commit(handle *tpm2.AuthHandle, P1 *tpms.ECCPoint, S2 *tpm2b.SensitiveData,
 			Name:   handle.Name,
 			Auth:   tpm2.PasswordAuth(password),
 		},
-		P1: tpm2b.ECCPoint{
+		P1: tpm2.TPM2BECCPoint{
 			Point: *P1,
 		},
 		S2: *S2,
@@ -234,20 +224,20 @@ func Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignRespo
 			Name:   handle.Name,
 			Auth:   tpm2.PasswordAuth(password),
 		},
-		Digest: tpm2b.Digest{
+		Digest: tpm2.TPM2BDigest{
 			Buffer: digest[:],
 		},
-		InScheme: tpmt.SigScheme{
-			Scheme: tpm.AlgECDAA,
-			Details: tpmu.SigScheme{
-				ECDAA: &tpms.SchemeECDAA{
-					HashAlg: tpm.AlgSHA256,
+		InScheme: tpm2.TPMTSigScheme{
+			Scheme: tpm2.TPMAlgECDAA,
+			Details: tpm2.TPMUSigScheme{
+				ECDAA: &tpm2.TPMSSchemeECDAA{
+					HashAlg: tpm2.TPMAlgSHA256,
 					Count:   count,
 				},
 			},
 		},
-		Validation: tpmt.TKHashCheck{
-			Tag: tpm.STHashCheck,
+		Validation: tpm2.TPMTTKHashCheck{
+			Tag: tpm2.TPMSTHashCheck,
 		},
 	}
 

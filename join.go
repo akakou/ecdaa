@@ -8,8 +8,6 @@ import (
 
 	"github.com/google/certificate-transparency-go/x509"
 
-	"github.com/google/go-tpm/direct/structures/tpm2b"
-	"github.com/google/go-tpm/direct/structures/tpms"
 	"github.com/google/go-tpm/tpm2"
 )
 
@@ -19,7 +17,7 @@ type JoinSeeds struct {
 }
 
 type JoinRequest struct {
-	public *tpm2.Public
+	public *tpm2.TPM2BPublic
 	cert   *x509.Certificate
 }
 
@@ -56,11 +54,11 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 		return nil, err
 	}
 
-	cert, err := ReadEKCert()
+	// cert, err := ReadEKCert()
 
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	var xBuf [int(FP256BN.MODBYTES)]byte
 	var yBuf [int(FP256BN.MODBYTES)]byte
@@ -69,11 +67,11 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	g1().GetX().ToBytes(xBuf[:])
 	g1().GetY().ToBytes(yBuf[:])
 
-	P1 := tpms.ECCPoint{
-		X: tpm2b.ECCParameter{
+	P1 := tpm2.TPMSECCPoint{
+		X: tpm2.TPM2BECCParameter{
 			Buffer: xBuf[:],
 		},
-		Y: tpm2b.ECCParameter{
+		Y: tpm2.TPM2BECCParameter{
 			Buffer: yBuf[:],
 		},
 	}
@@ -93,11 +91,11 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	s2Buf := append(numBuf, msg...)
 	B.GetY().ToBytes(y2Buf[:])
 
-	S2 := tpm2b.SensitiveData{
+	S2 := tpm2.TPM2BSensitiveData{
 		Buffer: s2Buf[:],
 	}
 
-	Y2 := tpm2b.ECCParameter{
+	Y2 := tpm2.TPM2BECCParameter{
 		Buffer: y2Buf[:],
 	}
 
@@ -134,7 +132,7 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 
 	fmt.Printf("%v\n", sign.Signature)
 
-	req.cert = cert
+	req.cert = nil
 
 	return &req, nil
 }

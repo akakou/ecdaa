@@ -2,26 +2,23 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"testing"
-
-	"github.com/google/go-tpm/tpm2"
 )
 
-func printPublic(p tpm2.Public, name string) {
-	fmt.Printf("----- %v ----\n", name)
+// func printPublic(p tpm2.TPM2BPublic, name string) {
+// 	fmt.Printf("----- %v ----\n", name)
 
-	inPublic, err := p.Encode()
-	if err != nil {
-		log.Fatalf("error")
-	}
+// 	inPublic, err := p.PublicArea.Unique.ECC.
+// 	if err != nil {
+// 		log.Fatalf("error")
+// 	}
 
-	for _, v := range inPublic {
-		fmt.Printf("%02x ", v)
-	}
+// 	for _, v := range inPublic {
+// 		fmt.Printf("%02x ", v)
+// 	}
 
-	fmt.Printf("\n----- ----- ----\n\n")
-}
+// 	fmt.Printf("\n----- ----- ----\n\n")
+// }
 
 func TestCreateKey(t *testing.T) {
 	handle, key, err := CreateKey()
@@ -34,15 +31,15 @@ func TestCreateKey(t *testing.T) {
 	fmt.Printf("key: %v\n", key)
 }
 
-func TestReadEKCert(t *testing.T) {
-	cert, err := ReadEKCert()
+// func TestReadEKCert(t *testing.T) {
+// 	cert, err := ReadEKCert()
 
-	if err != nil {
-		t.Errorf("%v", err)
-	}
+// 	if err != nil {
+// 		t.Errorf("%v", err)
+// 	}
 
-	fmt.Printf("%v\n", cert.Raw)
-}
+// 	fmt.Printf("%v\n", cert.Raw)
+// }
 
 // func TestNameMatchesPublicArea(t *testing.T) {
 // 	rwc, err := tpm2.OpenTPM("/dev/tpm0")

@@ -6,7 +6,7 @@ import (
 	"miracl/core"
 	"miracl/core/FP256BN"
 
-	"github.com/google/go-tpm/direct/structures/tpm2b"
+	"github.com/google/go-tpm/tpm2"
 )
 
 /**
@@ -26,14 +26,14 @@ func InitRandom() *core.RAND {
 	return rng
 }
 
-func ParseECPFromTPMFmt(tpmEcc *tpm2b.ECCPoint) *FP256BN.ECP {
+func ParseECPFromTPMFmt(tpmEcc *tpm2.TPM2BECCPoint) *FP256BN.ECP {
 	x := FP256BN.FromBytes(tpmEcc.Point.X.Buffer)
 	y := FP256BN.FromBytes(tpmEcc.Point.Y.Buffer)
 
 	return FP256BN.NewECPbigs(x, y)
 }
 
-func ParseECP2FromTPMFmt(tpmEcc *tpm2b.ECCPoint) *FP256BN.ECP2 {
+func ParseECP2FromTPMFmt(tpmEcc *tpm2.TPM2BECCPoint) *FP256BN.ECP2 {
 	big_x := FP256BN.FromBytes(tpmEcc.Point.X.Buffer)
 	big_y := FP256BN.FromBytes(tpmEcc.Point.Y.Buffer)
 
