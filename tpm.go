@@ -85,10 +85,10 @@ func publicParams() PublicParams {
 	return params
 }
 
-func CreateKey() (*tpm2.AuthHandle, *tpm2.TPMSECCPoint, error) {
+func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, *tpm2.TPM2BPublic, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	defer thetpm.Close()
@@ -112,7 +112,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPMSECCPoint, error) {
 
 	rspCP, err := primary.Execute(thetpm)
 	if err != nil {
-		return nil, nil, fmt.Errorf("create primary: %v", err)
+		return nil, nil, nil, fmt.Errorf("create primary: %v", err)
 	}
 
 	create := tpm2.Create{
@@ -137,7 +137,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPMSECCPoint, error) {
 
 	rspC, err := create.Execute(thetpm)
 	if err != nil {
-		return nil, nil, fmt.Errorf("create: %v", err)
+		return nil, nil, nil, fmt.Errorf("create: %v", err)
 	}
 
 	load := tpm2.Load{
@@ -152,7 +152,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPMSECCPoint, error) {
 
 	rspL, err := load.Execute(thetpm)
 	if err != nil {
-		return nil, nil, fmt.Errorf("load: %v", err)
+		return nil, nil, nil, fmt.Errorf("load: %v", err)
 	}
 
 	handle := tpm2.AuthHandle{
@@ -161,7 +161,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPMSECCPoint, error) {
 		Auth:   auth,
 	}
 
-	return &handle, rspC.OutPublic.PublicArea.Unique.ECC, nil
+	return &handle, &rspCP.OutPublic, &rspC.OutPublic, nil
 }
 
 // func ReadEKCert() (*x509.Certificate, error) {
