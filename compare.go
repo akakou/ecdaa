@@ -1,6 +1,8 @@
 package main
 
-import "miracl/core/FP256BN"
+import (
+	"miracl/core/FP256BN"
+)
 
 func compECP(x FP256BN.ECP, y FP256BN.ECP) bool {
 	x.Affine()
@@ -12,5 +14,5 @@ func compECP(x FP256BN.ECP, y FP256BN.ECP) bool {
 	yX := y.GetX()
 	yY := y.GetY()
 
-	return FP256BN.Comp(xX, xY) == 0 && FP256BN.Comp(yX, yY) == 0
+	return FP256BN.Comp(xX, yX) == 0 && FP256BN.Comp(xY, yY) == 0
 }
