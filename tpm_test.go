@@ -32,15 +32,15 @@ func TestCreateKey(t *testing.T) {
 	fmt.Printf("key public key: %v\n", keyP)
 }
 
-// func TestReadEKCert(t *testing.T) {
-// 	cert, err := ReadEKCert()
+func TestReadEKCert(t *testing.T) {
+	cert, err := ReadEKCert()
 
-// 	if err != nil {
-// 		t.Errorf("%v", err)
-// 	}
+	if err != nil {
+		t.Errorf("%v", err)
+	}
 
-// 	fmt.Printf("%v\n", cert.Raw)
-// }
+	fmt.Printf("%v\n", cert.PublicKeyAlgorithm)
+}
 
 // func TestNameMatchesPublicArea(t *testing.T) {
 // 	rwc, err := tpm2.OpenTPM("/dev/tpm0")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/x509"
 	"fmt"
 
 	"github.com/google/go-tpm/tpm2"
@@ -164,24 +165,65 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, *tpm2.TPM2BPublic, error)
 	return &handle, &rspCP.OutPublic, &rspC.OutPublic, nil
 }
 
-// func ReadEKCert() (*x509.Certificate, error) {
-// 	config := &attest.OpenConfig{}
+func ReadEKCert() (*x509.Certificate, error) {
+	// TODO: rspRP.NVPublic.NVPublic.DataSize may be wrong or required to process.
+	// Because we don't know how to fix it now, we remove data based on fixed value.  
+	removeLen := 825 
 
-// 	tpm, err := attest.OpenTPM(config)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	certIndex := 0x1C0000A
+	nvIndex := tpm2.TPMHandle(certIndex)
 
-// 	eks, err := tpm.EKs()
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	result := []byte{}
 
-// 	ek := eks[0]
-// 	cert := ek.Certificate
+	thetpm, err := transport.OpenTPM("/dev/tpm0")
+	if err != nil {
+		return nil, err
+	}
+	defer thetpm.Close()
 
-// 	return cert, err
-// }
+	readPub := tpm2.NVReadPublic{
+		NVIndex: nvIndex,
+	}
+
+	rspRP, err := readPub.Execute(thetpm)
+
+	if err != nil {
+		return nil, fmt.Errorf("read public: %w", err)
+	}
+
+	for i := 0; i < int(rspRP.NVPublic.NVPublic.DataSize)-removeLen; i++ {
+		read := tpm2.NVRead{
+			AuthHandle: tpm2.NamedHandle{
+				Handle: rspRP.NVPublic.NVPublic.NVIndex,
+				Name:   rspRP.NVName,
+			},
+			NVIndex: tpm2.NamedHandle{
+				Handle: rspRP.NVPublic.NVPublic.NVIndex,
+				Name:   rspRP.NVName,
+			},
+			Size:   1,
+			Offset: uint16(i),
+		}
+
+		rspNV, err := read.Execute(thetpm)
+
+		if err != nil {
+			return nil, fmt.Errorf("read: %w", err)
+		}
+
+		result = append(result, rspNV.Data.Buffer...)
+
+	}
+
+	cert, err := x509.ParseCertificate(result)
+
+	if err != nil {
+		return nil, fmt.Errorf("parsing EK cert: %v", err)
+	}
+
+	return cert, nil
+
+}
 
 func Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
