@@ -48,7 +48,7 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	msg := []byte("BASENAME")
 
 	var req JoinRequest
-	handle, _, public, err := CreateKey()
+	handle, public, err := CreateKey()
 
 	if err != nil {
 		return nil, err

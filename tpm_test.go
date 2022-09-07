@@ -21,14 +21,13 @@ import (
 // }
 
 func TestCreateKey(t *testing.T) {
-	handle, ekP, keyP, err := CreateKey()
+	handle, keyP, err := CreateKey()
 
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
 	fmt.Printf("handle: %v\n", handle)
-	fmt.Printf("ek public key: %v\n", ekP)
 	fmt.Printf("key public key: %v\n", keyP)
 }
 

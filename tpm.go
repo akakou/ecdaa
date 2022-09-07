@@ -86,10 +86,10 @@ func publicParams() PublicParams {
 	return params
 }
 
-func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, *tpm2.TPM2BPublic, error) {
+func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	defer thetpm.Close()
@@ -113,7 +113,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, *tpm2.TPM2BPublic, error)
 
 	rspCP, err := primary.Execute(thetpm)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create primary: %v", err)
+		return nil, nil, fmt.Errorf("create primary: %v", err)
 	}
 
 	create := tpm2.Create{
@@ -138,7 +138,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, *tpm2.TPM2BPublic, error)
 
 	rspC, err := create.Execute(thetpm)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create: %v", err)
+		return nil, nil, fmt.Errorf("create: %v", err)
 	}
 
 	load := tpm2.Load{
@@ -153,7 +153,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, *tpm2.TPM2BPublic, error)
 
 	rspL, err := load.Execute(thetpm)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("load: %v", err)
+		return nil, nil, fmt.Errorf("load: %v", err)
 	}
 
 	handle := tpm2.AuthHandle{
@@ -162,13 +162,13 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, *tpm2.TPM2BPublic, error)
 		Auth:   auth,
 	}
 
-	return &handle, &rspCP.OutPublic, &rspC.OutPublic, nil
+	return &handle, &rspC.OutPublic, nil
 }
 
 func ReadEKCert() (*x509.Certificate, error) {
 	// TODO: rspRP.NVPublic.NVPublic.DataSize may be wrong or required to process.
-	// Because we don't know how to fix it now, we remove data based on fixed value.  
-	removeLen := 825 
+	// Because we don't know how to fix it now, we remove data based on fixed value.
+	removeLen := 825
 
 	certIndex := 0x1C0000A
 	nvIndex := tpm2.TPMHandle(certIndex)
