@@ -4,7 +4,7 @@ import (
 	"miracl/core/FP256BN"
 )
 
-func compECP(x FP256BN.ECP, y FP256BN.ECP) bool {
+func compECP(x *FP256BN.ECP, y *FP256BN.ECP) bool {
 	x.Affine()
 	y.Affine()
 
