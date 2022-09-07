@@ -45,17 +45,20 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, error) {
  * Step2. generate request for join (by Member)
  */
 func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
+	var req JoinRequest
 	msg := []byte("BASENAME")
 
-	var req JoinRequest
+	/* create key and get public key */
 	handle, public, err := CreateKey()
 
 	if err != nil {
 		return nil, err
 	}
 
+	// the public key is named "Q"
 	Q := ParseECPFromTPMFmt(public.PublicArea.Unique.ECC)
 
+	/* set zero buffers to P1 */
 	var xBuf [int(FP256BN.MODBYTES)]byte
 	var yBuf [int(FP256BN.MODBYTES)]byte
 	var y2Buf [int(FP256BN.MODBYTES)]byte
@@ -72,6 +75,7 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 		},
 	}
 
+	/* calc hash  */
 	hash := NewHash()
 	hash.WriteBytes(msg)
 
@@ -87,6 +91,7 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	s2Buf := append(numBuf, msg...)
 	B.GetY().ToBytes(y2Buf[:])
 
+	/* set up argument for commit */
 	S2 := tpm2.TPM2BSensitiveData{
 		Buffer: s2Buf[:],
 	}
@@ -95,57 +100,60 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 		Buffer: y2Buf[:],
 	}
 
+	/* run commit and get U1*/
 	comResp, err := Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
 		return nil, fmt.Errorf("commmit error: %v\n", err)
 	}
 
-	hash = NewHash()
-
-	// U1
+	// get result (U1)
 	E := ParseECPFromTPMFmt(&comResp.E.Point)
 	U1 := E
 
-	// P1
-	hash.WriteECP(U1, B)
+	/* calc hash c_2 = H( U1 | P1 | Q | m ) */
+	hash = NewHash()
 
-	// Q
-	hash.WriteECP2(g2())
+	// P1
+	hash.WriteECP(U1, B, Q)
 
 	c2 := hash.SumToBIG()
 
 	fmt.Printf("hash: %v\n", c2)
 
-	var c2bytes [32]byte
-	sign, err := Sign(c2bytes[:], comResp.Counter, handle)
+	/* sign and get s1, n */
+	var tmp [32]byte
+	sign, err := Sign(tmp[:], comResp.Counter, handle)
 
 	if err != nil {
 		return nil, fmt.Errorf("sign error: %v\n", err)
 	}
 
 	s1 := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureS.Buffer)
-	// n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
+	n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
 
+	/* calc hash c1 = H( n | c2 ) */
 	fmt.Printf("%v\n", sign.Signature)
 
 	hash = NewHash()
-
-	hash.WriteBIG(c2)
-	hash.WriteBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
+	hash.WriteBIG(n, c2)
 
 	c1 := hash.SumToBIG()
 
+	/* compare U1 ?= B^s1 Q^-c1   */
+	// UDashTmp1 = B^s1
 	UDashTmp1 := FP256BN.NewECP()
 	UDashTmp1.Copy(B)
 	UDashTmp1.Mul(s1)
 
+	// UDashTmp2 = Q^-c1
 	UDashTmp2 := FP256BN.NewECP()
 	UDashTmp2.Copy(Q)
 
 	minC1 := zero().Minus(c1)
 	UDashTmp2.Mul(minC1)
 
+	// UDashTmp1 * UDashTmp2 = B^s1 Q^-c1
 	UDashTmp1.Add(UDashTmp2)
 
 	if !compECP(*U1, *UDashTmp1) {
