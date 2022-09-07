@@ -148,9 +148,9 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 
 	UDashTmp1.Add(UDashTmp2)
 
-	// if U1 != UDashTmp1 {
-	// 	return nil, fmt.Errorf("not match")
-	// }
+	if !compECP(*U1, *UDashTmp1) {
+		return nil, fmt.Errorf("not match (`%v` != `%v`)", *U1, *UDashTmp1)
+	}
 
 	return &req, nil
 }
