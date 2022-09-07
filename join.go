@@ -75,7 +75,7 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 		},
 	}
 
-	/* calc hash  */
+	/* calc hash */
 	hash := NewHash()
 	hash.WriteBytes(msg)
 
@@ -100,12 +100,16 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 		Buffer: y2Buf[:],
 	}
 
-	/* run commit and get U1*/
+	/* run commit and get U1 */
 	comResp, err := Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
-		return nil, fmt.Errorf("commmit error: %v\n", err)
+		return nil, fmt.Errorf("commit error: %v\n", err)
 	}
+
+	// get result (Q) ???
+	K := ParseECPFromTPMFmt(&comResp.K.Point)
+	Qdash := K
 
 	// get result (U1)
 	E := ParseECPFromTPMFmt(&comResp.E.Point)
@@ -133,8 +137,6 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
 
 	/* calc hash c1 = H( n | c2 ) */
-	fmt.Printf("%v\n", sign.Signature)
-
 	hash = NewHash()
 	hash.WriteBIG(n, c2)
 
@@ -142,22 +144,26 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 
 	/* compare U1 ?= B^s1 Q^-c1   */
 	// UDashTmp1 = B^s1
-	UDashTmp1 := FP256BN.NewECP()
-	UDashTmp1.Copy(B)
-	UDashTmp1.Mul(s1)
+	UDashTmp := FP256BN.NewECP()
+	UDashTmp.Copy(B)
+	UDashTmp = UDashTmp.Mul(s1)
 
 	// UDashTmp2 = Q^-c1
 	UDashTmp2 := FP256BN.NewECP()
 	UDashTmp2.Copy(Q)
 
-	minC1 := zero().Minus(c1)
-	UDashTmp2.Mul(minC1)
+	minusC1 := FP256BN.Modneg(c1, p())
+	UDashTmp2 = UDashTmp2.Mul(minusC1)
 
 	// UDashTmp1 * UDashTmp2 = B^s1 Q^-c1
-	UDashTmp1.Add(UDashTmp2)
+	UDashTmp.Add(UDashTmp2)
 
-	if !compECP(*U1, *UDashTmp1) {
-		return nil, fmt.Errorf("not match (`%v` != `%v`)", *U1, *UDashTmp1)
+	if !compECP(U1, UDashTmp) {
+		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", *U1, *UDashTmp)
+	}
+
+	if !compECP(Q, Qdash) {
+		return nil, fmt.Errorf("Q is not match (`%v` != `%v`)", *Q, *Qdash)
 	}
 
 	return &req, nil
