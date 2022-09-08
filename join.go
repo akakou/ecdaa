@@ -46,7 +46,7 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, error) {
  */
 func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
 	var req JoinRequest
-	basename := []byte("BASENAME")
+	basename := []byte("")
 
 	/* create key and get public key */
 	handle, _, err := (*member.tpm).CreateKey()
@@ -107,17 +107,17 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 		return nil, fmt.Errorf("commit error: %v\n", err)
 	}
 
-	// get result (Q) ???
+	// get result (Q)
 	K := ParseECPFromTPMFmt(&comResp.K.Point)
 	fmt.Printf("K: %v\n", &comResp.K.Point)
 	Q := K
 
 	// get result (U1)
 	E := ParseECPFromTPMFmt(&comResp.E.Point)
-	fmt.Printf("K: %v\n", &comResp.E.Point)
+	fmt.Printf("E: %v\n", &comResp.E.Point)
 	U1 := E
 
-	/* calc hash c_2 = H( U1 | P1 | Q | m ) */
+	/* calc hash c2 = H( U1 | P1 | Q | m ) */
 	hash = NewHash()
 
 	// P1
@@ -139,10 +139,6 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	s1 := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureS.Buffer)
 	n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
-
-	// ?
-	// n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureS.Buffer)
-	// s1 := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
 
 	/* calc hash c1 = H( n | c2 ) */
 	hash = NewHash()
@@ -167,11 +163,11 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	UDashTmp.Add(UDashTmp2)
 
 	if !compECP(U1, UDashTmp) {
-		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", *U1, *UDashTmp)
+		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", U1.ToString(), UDashTmp.ToString())
 	}
 
 	// if !compECP(Q, Qdash) {
-	// 	return nil, fmt.Errorf("Q is not match (`%v` != `%v`)", *Q, *Qdash)
+	// 	return nil, fmt.Errorf("Q is not match (`%v` != `%v`)", Q.ToString(), Qdash.ToString())
 	// }
 
 	return &req, nil
