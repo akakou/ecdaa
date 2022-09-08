@@ -44,40 +44,25 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, error) {
 /**
  * Step2. generate request for join (by Member)
  */
-func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
+func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
 	var req JoinRequest
-	msg := []byte("BASENAME")
+	basename := []byte("")
 
 	/* create key and get public key */
-	handle, public, err := CreateKey()
+	handle, _, err := (*member.tpm).CreateKey()
 
 	if err != nil {
 		return nil, err
 	}
 
 	// the public key is named "Q"
-	Q := ParseECPFromTPMFmt(public.PublicArea.Unique.ECC)
-
-	/* set zero buffers to P1 */
-	var xBuf [int(FP256BN.MODBYTES)]byte
-	var yBuf [int(FP256BN.MODBYTES)]byte
-	var y2Buf [int(FP256BN.MODBYTES)]byte
-
-	g1().GetX().ToBytes(xBuf[:])
-	g1().GetY().ToBytes(yBuf[:])
-
-	P1 := tpm2.TPMSECCPoint{
-		X: tpm2.TPM2BECCParameter{
-			Buffer: xBuf[:],
-		},
-		Y: tpm2.TPM2BECCParameter{
-			Buffer: yBuf[:],
-		},
-	}
+	// Q := ParseECPFromTPMFmt(public.PublicArea.Unique.ECC)
 
 	/* calc hash */
+	var y2Buf [int(FP256BN.MODBYTES)]byte
+
 	hash := NewHash()
-	hash.WriteBytes(msg)
+	hash.WriteBytes(basename)
 
 	B, i, err := hash.HashToECP()
 
@@ -88,8 +73,24 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	numBuf := make([]byte, binary.MaxVarintLen32)
 	binary.PutVarint(numBuf, int64(i))
 
-	s2Buf := append(numBuf, msg...)
+	s2Buf := append(numBuf, basename...)
 	B.GetY().ToBytes(y2Buf[:])
+
+	/* set zero buffers to P1 */
+	var xBuf [int(FP256BN.MODBYTES)]byte
+	var yBuf [int(FP256BN.MODBYTES)]byte
+
+	B.GetX().ToBytes(xBuf[:])
+	B.GetY().ToBytes(yBuf[:])
+
+	P1 := tpm2.TPMSECCPoint{
+		X: tpm2.TPM2BECCParameter{
+			Buffer: xBuf[:],
+		},
+		Y: tpm2.TPM2BECCParameter{
+			Buffer: yBuf[:],
+		},
+	}
 
 	/* set up argument for commit */
 	S2 := tpm2.TPM2BSensitiveData{
@@ -101,21 +102,21 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	}
 
 	/* run commit and get U1 */
-	comResp, err := Commit(handle, &P1, &S2, &Y2)
+	comResp, err := (*member.tpm).Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
 		return nil, fmt.Errorf("commit error: %v\n", err)
 	}
 
-	// get result (Q) ???
+	// get result (Q)
 	K := ParseECPFromTPMFmt(&comResp.K.Point)
-	Qdash := K
+	Q := K
 
 	// get result (U1)
 	E := ParseECPFromTPMFmt(&comResp.E.Point)
 	U1 := E
 
-	/* calc hash c_2 = H( U1 | P1 | Q | m ) */
+	/* calc hash c2 = H( U1 | P1 | Q | m ) */
 	hash = NewHash()
 
 	// P1
@@ -123,11 +124,11 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 
 	c2 := hash.SumToBIG()
 
-	fmt.Printf("hash: %v\n", c2)
-
 	/* sign and get s1, n */
-	var tmp [32]byte
-	sign, err := Sign(tmp[:], comResp.Counter, handle)
+	var c2Bytes [32]byte
+	c2.ToBytes(c2Bytes[:])
+
+	sign, err := (*member.tpm).Sign(c2Bytes[:], comResp.Counter, handle)
 
 	if err != nil {
 		return nil, fmt.Errorf("sign error: %v\n", err)
@@ -159,12 +160,12 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	UDashTmp.Add(UDashTmp2)
 
 	if !compECP(U1, UDashTmp) {
-		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", *U1, *UDashTmp)
+		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", U1.ToString(), UDashTmp.ToString())
 	}
 
-	if !compECP(Q, Qdash) {
-		return nil, fmt.Errorf("Q is not match (`%v` != `%v`)", *Q, *Qdash)
-	}
+	// if !compECP(Q, Qdash) {
+	// 	return nil, fmt.Errorf("Q is not match (`%v` != `%v`)", Q.ToString(), Qdash.ToString())
+	// }
 
 	return &req, nil
 }
