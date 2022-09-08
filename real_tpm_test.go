@@ -21,7 +21,14 @@ import (
 // }
 
 func TestCreateKey(t *testing.T) {
-	handle, keyP, err := CreateKey()
+	tpm, err := OpenRealTPM()
+	defer tpm.Close()
+	
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	handle, keyP, err := tpm.CreateKey()
 
 	if err != nil {
 		t.Errorf("%v", err)
@@ -32,7 +39,14 @@ func TestCreateKey(t *testing.T) {
 }
 
 func TestReadEKCert(t *testing.T) {
-	cert, err := ReadEKCert()
+	tpm, err := OpenRealTPM()
+	defer tpm.Close()
+
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	cert, err := tpm.ReadEKCert()
 
 	if err != nil {
 		t.Errorf("%v", err)

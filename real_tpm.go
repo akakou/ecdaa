@@ -10,6 +10,10 @@ import (
 
 var password = []byte("hello")
 
+type RealTPM struct {
+	tpm transport.TPMCloser
+}
+
 type PublicParams struct {
 	primary tpm2.TPMTPublic
 	key     tpm2.TPMTPublic
@@ -86,14 +90,24 @@ func publicParams() PublicParams {
 	return params
 }
 
-func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
+func OpenRealTPM() (*RealTPM, error) {
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	defer thetpm.Close()
+	tpm := RealTPM{
+		tpm: thetpm,
+	}
 
+	return &tpm, nil
+}
+
+func (tpm *RealTPM) Close() {
+	tpm.tpm.Close()
+}
+
+func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 	params := publicParams()
 	auth := tpm2.PasswordAuth(password)
 
@@ -111,7 +125,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 		},
 	}
 
-	rspCP, err := primary.Execute(thetpm)
+	rspCP, err := primary.Execute(tpm.tpm)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create primary: %v", err)
 	}
@@ -136,7 +150,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 		},
 	}
 
-	rspC, err := create.Execute(thetpm)
+	rspC, err := create.Execute(tpm.tpm)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create: %v", err)
 	}
@@ -151,7 +165,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 		InPublic:  rspC.OutPublic,
 	}
 
-	rspL, err := load.Execute(thetpm)
+	rspL, err := load.Execute(tpm.tpm)
 	if err != nil {
 		return nil, nil, fmt.Errorf("load: %v", err)
 	}
@@ -165,7 +179,7 @@ func CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 	return &handle, &rspC.OutPublic, nil
 }
 
-func ReadEKCert() (*x509.Certificate, error) {
+func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
 	// TODO: rspRP.NVPublic.NVPublic.DataSize may be wrong or required to process.
 	// Because we don't know how to fix it now, we remove data based on fixed value.
 	removeLen := 825
@@ -175,17 +189,11 @@ func ReadEKCert() (*x509.Certificate, error) {
 
 	result := []byte{}
 
-	thetpm, err := transport.OpenTPM("/dev/tpm0")
-	if err != nil {
-		return nil, err
-	}
-	defer thetpm.Close()
-
 	readPub := tpm2.NVReadPublic{
 		NVIndex: nvIndex,
 	}
 
-	rspRP, err := readPub.Execute(thetpm)
+	rspRP, err := readPub.Execute(tpm.tpm)
 
 	if err != nil {
 		return nil, fmt.Errorf("read public: %w", err)
@@ -205,7 +213,7 @@ func ReadEKCert() (*x509.Certificate, error) {
 			Offset: uint16(i),
 		}
 
-		rspNV, err := read.Execute(thetpm)
+		rspNV, err := read.Execute(tpm.tpm)
 
 		if err != nil {
 			return nil, fmt.Errorf("read: %w", err)
@@ -222,17 +230,9 @@ func ReadEKCert() (*x509.Certificate, error) {
 	}
 
 	return cert, nil
-
 }
 
-func Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error) {
-	thetpm, err := transport.OpenTPM("/dev/tpm0")
-	if err != nil {
-		return nil, err
-	}
-
-	defer thetpm.Close()
-
+func (tpm *RealTPM) Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error) {
 	commit := tpm2.Commit{
 		SignHandle: tpm2.AuthHandle{
 			Handle: handle.Handle,
@@ -246,7 +246,7 @@ func Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensit
 		Y2: *Y2,
 	}
 
-	rspC, err := commit.Execute(thetpm)
+	rspC, err := commit.Execute(tpm.tpm)
 	if err != nil {
 		return nil, fmt.Errorf("commit: %v", err)
 	}
@@ -254,12 +254,7 @@ func Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensit
 	return rspC, nil
 }
 
-func Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error) {
-	thetpm, err := transport.OpenTPM("/dev/tpm0")
-	if err != nil {
-		return nil, err
-	}
-
+func (tpm *RealTPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error) {
 	sign := tpm2.Sign{
 		KeyHandle: tpm2.AuthHandle{
 			Handle: handle.Handle,
@@ -283,7 +278,7 @@ func Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignRespo
 		},
 	}
 
-	rspS, err := sign.Execute(thetpm)
+	rspS, err := sign.Execute(tpm.tpm)
 
 	if err != nil {
 		return nil, fmt.Errorf("sign: %v", err)

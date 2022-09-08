@@ -44,12 +44,12 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, error) {
 /**
  * Step2. generate request for join (by Member)
  */
-func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
+func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
 	var req JoinRequest
 	basename := []byte("BASENAME")
 
 	/* create key and get public key */
-	handle, public, err := CreateKey()
+	handle, public, err := (*member.tpm).CreateKey()
 
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	}
 
 	/* run commit and get U1 */
-	comResp, err := Commit(handle, &P1, &S2, &Y2)
+	comResp, err := (*member.tpm).Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
 		return nil, fmt.Errorf("commit error: %v\n", err)
@@ -131,7 +131,7 @@ func (_ *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, 
 	var c2Bytes [32]byte
 	c2.ToBytes(c2Bytes[:])
 
-	sign, err := Sign(c2Bytes[:], comResp.Counter, handle)
+	sign, err := (*member.tpm).Sign(c2Bytes[:], comResp.Counter, handle)
 
 	if err != nil {
 		return nil, fmt.Errorf("sign error: %v\n", err)
