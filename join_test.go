@@ -5,14 +5,14 @@ import (
 )
 
 func TestJoin(t *testing.T) {
-	tpm, err := OpenRealTPM()
+	rng := InitRandom()
+
+	tpm := NewSWTPM(rng)
 	defer tpm.Close()
 
-	if err != nil {
-		t.Errorf("%v", err)
-	}
-
-	rng := InitRandom()
+	// if err != nil {
+	// 	t.Errorf("%v", err)
+	// }
 
 	issuer := RandomIssuer(rng)
 	seed, err := issuer.genSeedForJoin(rng)

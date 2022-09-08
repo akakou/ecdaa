@@ -49,14 +49,14 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	basename := []byte("BASENAME")
 
 	/* create key and get public key */
-	handle, public, err := (*member.tpm).CreateKey()
+	handle, _, err := (*member.tpm).CreateKey()
 
 	if err != nil {
 		return nil, err
 	}
 
 	// the public key is named "Q"
-	Q := ParseECPFromTPMFmt(public.PublicArea.Unique.ECC)
+	// Q := ParseECPFromTPMFmt(public.PublicArea.Unique.ECC)
 
 	/* set zero buffers to P1 */
 	var xBuf [int(FP256BN.MODBYTES)]byte
@@ -110,7 +110,7 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	// get result (Q) ???
 	K := ParseECPFromTPMFmt(&comResp.K.Point)
 	fmt.Printf("K: %v\n", &comResp.K.Point)
-	Qdash := K
+	Q := K
 
 	// get result (U1)
 	E := ParseECPFromTPMFmt(&comResp.E.Point)
@@ -166,13 +166,13 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	// UDashTmp1 * UDashTmp2 = B^s1 Q^-c1
 	UDashTmp.Add(UDashTmp2)
 
-	// if !compECP(U1, UDashTmp) {
-	// 	return nil, fmt.Errorf("U is not match (`%v` != `%v`)", *U1, *UDashTmp)
-	// }
-
-	if !compECP(Q, Qdash) {
-		return nil, fmt.Errorf("Q is not match (`%v` != `%v`)", *Q, *Qdash)
+	if !compECP(U1, UDashTmp) {
+		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", *U1, *UDashTmp)
 	}
+
+	// if !compECP(Q, Qdash) {
+	// 	return nil, fmt.Errorf("Q is not match (`%v` != `%v`)", *Q, *Qdash)
+	// }
 
 	return &req, nil
 }
