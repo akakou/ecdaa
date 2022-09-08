@@ -58,24 +58,9 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	// the public key is named "Q"
 	// Q := ParseECPFromTPMFmt(public.PublicArea.Unique.ECC)
 
-	/* set zero buffers to P1 */
-	var xBuf [int(FP256BN.MODBYTES)]byte
-	var yBuf [int(FP256BN.MODBYTES)]byte
+	/* calc hash */
 	var y2Buf [int(FP256BN.MODBYTES)]byte
 
-	g1().GetX().ToBytes(xBuf[:])
-	g1().GetY().ToBytes(yBuf[:])
-
-	P1 := tpm2.TPMSECCPoint{
-		X: tpm2.TPM2BECCParameter{
-			Buffer: xBuf[:],
-		},
-		Y: tpm2.TPM2BECCParameter{
-			Buffer: yBuf[:],
-		},
-	}
-
-	/* calc hash */
 	hash := NewHash()
 	hash.WriteBytes(basename)
 
@@ -90,6 +75,22 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	s2Buf := append(numBuf, basename...)
 	B.GetY().ToBytes(y2Buf[:])
+
+	/* set zero buffers to P1 */
+	var xBuf [int(FP256BN.MODBYTES)]byte
+	var yBuf [int(FP256BN.MODBYTES)]byte
+
+	B.GetX().ToBytes(xBuf[:])
+	B.GetY().ToBytes(yBuf[:])
+
+	P1 := tpm2.TPMSECCPoint{
+		X: tpm2.TPM2BECCParameter{
+			Buffer: xBuf[:],
+		},
+		Y: tpm2.TPM2BECCParameter{
+			Buffer: yBuf[:],
+		},
+	}
 
 	/* set up argument for commit */
 	S2 := tpm2.TPM2BSensitiveData{
