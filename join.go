@@ -161,11 +161,8 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	if !compECP(U1, UDashTmp) {
 		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", U1.ToString(), UDashTmp.ToString())
-	}
 
-	// if !compECP(Q, Qdash) {
-	// 	return nil, fmt.Errorf("Q is not match (`%v` != `%v`)", Q.ToString(), Qdash.ToString())
-	// }
+	}
 
 	return &req, nil
 }
