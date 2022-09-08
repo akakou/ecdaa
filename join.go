@@ -83,8 +83,6 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	B.GetX().ToBytes(xBuf[:])
 	B.GetY().ToBytes(yBuf[:])
 
-	fmt.Printf("B=%v\n", B.ToString())
-
 	P1 := tpm2.TPMSECCPoint{
 		X: tpm2.TPM2BECCParameter{
 			Buffer: xBuf[:],
@@ -112,16 +110,11 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	// get result (Q)
 	K := ParseECPFromTPMFmt(&comResp.K.Point)
-	fmt.Printf("K: %v\n", &comResp.K.Point)
 	Q := K
 
 	// get result (U1)
 	E := ParseECPFromTPMFmt(&comResp.E.Point)
-	fmt.Printf("E: %v\n", &comResp.E.Point)
 	U1 := E
-
-	fmt.Printf("K=%v\n", K.ToString())
-	fmt.Printf("E=%v\n", E.ToString())
 
 	/* calc hash c2 = H( U1 | P1 | Q | m ) */
 	hash = NewHash()
@@ -130,8 +123,6 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	hash.WriteECP(U1, B, Q)
 
 	c2 := hash.SumToBIG()
-
-	fmt.Printf("c2=%v\n", c2)
 
 	/* sign and get s1, n */
 	var c2Bytes [32]byte
@@ -146,16 +137,11 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	s1 := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureS.Buffer)
 	n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
 
-	fmt.Printf("s1=%v\n", s1.ToString())
-	fmt.Printf("n=%v\n", n.ToString())
-
 	/* calc hash c1 = H( n | c2 ) */
 	hash = NewHash()
 	hash.WriteBIG(n, c2)
 
 	c1 := hash.SumToBIG()
-
-	fmt.Printf("c1=%v\n", c1.ToString())
 
 	/* compare U1 ?= B^s1 Q^-c1   */
 	// UDashTmp1 = B^s1
