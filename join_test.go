@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"miracl/core/FP256BN"
 	"testing"
 )
@@ -48,11 +49,12 @@ func TestJoinWithSW(t *testing.T) {
 }
 
 func TestJoinTmp(t *testing.T) {
-	rng := InitRandom()
+	// rng := InitRandom()
 	basename := []byte("")
 
 	/* create key a */
-	sk := FP256BN.Random(rng)
+	sk := FP256BN.NewBIGint(2)
+	// sk := FP256BN.Random(rng)
 
 	// the public key is named "Q"
 	/* calc hash */
@@ -61,15 +63,20 @@ func TestJoinTmp(t *testing.T) {
 
 	B, _, err := hash.HashToECP()
 
+	fmt.Printf("B=%v\n", B.ToString())
+
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
 	/* commit */
-	r1 := FP256BN.Random(rng)
+	r1 := FP256BN.NewBIGint(3)
 
 	K := B.Mul(sk)
 	E := B.Mul(r1)
+
+	fmt.Printf("K=%v\n", K.ToString())
+	fmt.Printf("E=%v\n", E.ToString())
 
 	Q := K
 	U1 := E
@@ -79,8 +86,10 @@ func TestJoinTmp(t *testing.T) {
 	hash.WriteECP(U1, B, Q)
 	c2 := hash.SumToBIG()
 
+	fmt.Printf("c2=%v\n", c2.ToString())
+
 	/* sign and get s1, n */
-	n := FP256BN.Random(rng)
+	n := FP256BN.NewBIGint(4)
 
 	hash = NewHash()
 	hash.WriteBIG(n, c2)
@@ -88,6 +97,9 @@ func TestJoinTmp(t *testing.T) {
 
 	s1 := FP256BN.Modmul(c1, sk, p())
 	s1 = FP256BN.Modadd(r1, s1, p())
+	
+	fmt.Printf("c1=%v\n", c1.ToString())
+	fmt.Printf("s1=%v\n", s1.ToString())
 
 	/* compare U1 ?= B^s1 Q^-c1   */
 	// UDashTmp1 = B^s1
