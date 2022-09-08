@@ -97,8 +97,8 @@ func (tpm *SWTPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*t
 
 	c1 := hash.SumToBIG()
 
-	s1 := FP256BN.Modmul(n, c1, p())
-	s1 = FP256BN.Modadd(s1, tpm.r1, p())
+	s1 := FP256BN.Modmul(c1, tpm.sk, p())
+	s1 = FP256BN.Modadd(tpm.r1, s1, p())
 
 	s1.ToBytes(s1Buf[:])
 	n.ToBytes(nBuf[:])
