@@ -148,7 +148,7 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	U1.Affine()
 	UDash.Affine()
 
-	if !compECP(U1, UDashTmp) {
+	if !compECP(U1, UDash) {
 		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", U1.ToString(), UDash.ToString())
 	}
 
