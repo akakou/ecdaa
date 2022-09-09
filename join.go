@@ -119,7 +119,6 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	/* calc hash c2 = H( U1 | P1 | Q | m ) */
 	hash = NewHash()
 
-	// P1
 	hash.WriteECP(U1, B, Q)
 
 	c2 := hash.SumToBIG()
@@ -140,28 +139,17 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	/* calc hash c1 = H( n | c2 ) */
 	hash = NewHash()
 	hash.WriteBIG(n, c2)
-
 	c1 := hash.SumToBIG()
 
-	/* compare U1 ?= B^s1 Q^-c1   */
-	// UDashTmp1 = B^s1
-	UDashTmp := FP256BN.NewECP()
-	UDashTmp.Copy(B)
-	UDashTmp = UDashTmp.Mul(s1)
+	UDash := B.Mul(s1)
+	UDashTmp := Q.Mul(c1)
 
-	// UDashTmp2 = Q^-c1
-	UDashTmp2 := FP256BN.NewECP()
-	UDashTmp2.Copy(Q)
-
-	minusC1 := FP256BN.Modneg(c1, p())
-	UDashTmp2 = UDashTmp2.Mul(minusC1)
-
-	// UDashTmp1 * UDashTmp2 = B^s1 Q^-c1
-	UDashTmp.Add(UDashTmp2)
+	UDash.Sub(UDashTmp)
+	U1.Affine()
+	UDash.Affine()
 
 	if !compECP(U1, UDashTmp) {
-		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", U1.ToString(), UDashTmp.ToString())
-
+		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", U1.ToString(), UDash.ToString())
 	}
 
 	return &req, nil
