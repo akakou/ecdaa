@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
@@ -35,25 +36,44 @@ func (tpm *SWTPM) ReadEKCert() (*x509.Certificate, error) {
 	return nil, nil
 }
 
-func (tpm *SWTPM) Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error) {
+func (tpm *SWTPM) Commit(handle *tpm2.AuthHandle, P1Tpm *tpm2.TPMSECCPoint, S2Tpm *tpm2.TPM2BSensitiveData, Y2Tpm *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error) {
 	var kXBuf [int(FP256BN.MODBYTES)]byte
 	var kYBuf [int(FP256BN.MODBYTES)]byte
+
+	var lXBuf [int(FP256BN.MODBYTES)]byte
+	var lYBuf [int(FP256BN.MODBYTES)]byte
 
 	var eXBuf [int(FP256BN.MODBYTES)]byte
 	var eYBuf [int(FP256BN.MODBYTES)]byte
 
 	tpm.r1 = FP256BN.Random(tpm.rng)
 
-	B := ParseECPFromTPMFmt(P1)
+	P1 := ParseECPFromTPMFmt(P1Tpm)
+
+	// s2 := FP256BN.FromBytes(S2Tpm.Buffer)
+	y2 := FP256BN.FromBytes(Y2Tpm.Buffer)
+
+	hash := NewHash()
+	hash.WriteBytes(S2Tpm.Buffer)
+	h := hash.SumToBIG()
+
+	B := FP256BN.NewECPbigs(h, y2)
+
+	fmt.Printf("test3: %v\n", B.GetX())
 
 	K := B.Mul(tpm.sk)
-	E := B.Mul(tpm.r1)
+	L := B.Mul(tpm.r1)
+	E := P1.Mul(tpm.r1)
 
 	K.Affine()
+	L.Affine()
 	E.Affine()
 
 	K.GetX().ToBytes(kXBuf[:])
 	K.GetY().ToBytes(kYBuf[:])
+
+	L.GetX().ToBytes(lXBuf[:])
+	L.GetY().ToBytes(lYBuf[:])
 
 	E.GetX().ToBytes(eXBuf[:])
 	E.GetY().ToBytes(eYBuf[:])
@@ -69,7 +89,16 @@ func (tpm *SWTPM) Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm
 				},
 			},
 		},
-		L: tpm2.TPM2BECCPoint{},
+		L: tpm2.TPM2BECCPoint{
+			Point: tpm2.TPMSECCPoint{
+				X: tpm2.TPM2BECCParameter{
+					Buffer: lXBuf[:],
+				},
+				Y: tpm2.TPM2BECCParameter{
+					Buffer: lYBuf[:],
+				},
+			},
+		},
 		E: tpm2.TPM2BECCPoint{
 			Point: tpm2.TPMSECCPoint{
 				X: tpm2.TPM2BECCParameter{
