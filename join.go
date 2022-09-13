@@ -75,6 +75,7 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	s2Buf := append(numBuf, basename...)
 	B.GetY().ToBytes(y2Buf[:])
+	fmt.Printf("test2: %v\n", B.GetX())
 
 	/* set zero buffers to P1 */
 	var xBuf [int(FP256BN.MODBYTES)]byte
@@ -102,18 +103,18 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	}
 
 	/* run commit and get U1 */
-	comResp, err := (*member.tpm).Commit(handle, &P1, &S2, &Y2)
+	comRsp, err := (*member.tpm).Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
 		return nil, fmt.Errorf("commit error: %v\n", err)
 	}
 
 	// get result (Q)
-	K := ParseECPFromTPMFmt(&comResp.K.Point)
+	K := ParseECPFromTPMFmt(&comRsp.K.Point)
 	Q := K
 
 	// get result (U1)
-	E := ParseECPFromTPMFmt(&comResp.E.Point)
+	E := ParseECPFromTPMFmt(&comRsp.E.Point)
 	U1 := E
 
 	/* calc hash c2 = H( U1 | P1 | Q | m ) */
@@ -125,9 +126,9 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	/* sign and get s1, n */
 	var c2Bytes [32]byte
-	c2.ToBytes(c2Bytes[:])
+	// c2.ToBytes(c2Bytes[:])
 
-	sign, err := (*member.tpm).Sign(c2Bytes[:], comResp.Counter, handle)
+	sign, err := (*member.tpm).Sign(c2Bytes[:], comRsp.Counter, handle)
 
 	if err != nil {
 		return nil, fmt.Errorf("sign error: %v\n", err)
