@@ -67,9 +67,13 @@ func (h *Hash) SumToBIG() *FP256BN.BIG {
 	return resBIG
 }
 
-func (h *Hash) HashToECP() (*FP256BN.ECP, uint32, error) {
+func (baseHash *Hash) HashToECP() (*FP256BN.ECP, uint32, error) {
 	var i uint32
+
+	base := baseHash.B
+
 	for i = 0; i <= 232; i++ {
+		hash := NewHash()
 		// This process corresponds to BigNumberToB.
 		// Compute BigNumberToB(i,4) on FIDO's spec indicated
 		// that it should continue to find the number which
@@ -77,9 +81,9 @@ func (h *Hash) HashToECP() (*FP256BN.ECP, uint32, error) {
 		numBuf := make([]byte, binary.MaxVarintLen32)
 		binary.PutVarint(numBuf, int64(i))
 
-		h.B = append([][]byte{numBuf}, h.B...)
+		hash.B = append([][]byte{numBuf}, base...)
 
-		x := h.SumToBIG()
+		x := hash.SumToBIG()
 
 		ecp := FP256BN.NewECPbig(x)
 		ecp = ecp.Mul(FP256BN.NewBIGint(FP256BN.CURVE_Cof_I))
