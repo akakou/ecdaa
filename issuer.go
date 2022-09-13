@@ -22,6 +22,9 @@ func RandomISK(rng *core.RAND) ISK {
 	x := FP256BN.Random(rng)
 	y := FP256BN.Random(rng)
 
+	x.Mod(p())
+	y.Mod(p())
+
 	isk.x = x
 	isk.y = y
 
@@ -51,6 +54,9 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 
 	r_x := FP256BN.Random(rng)
 	r_y := FP256BN.Random(rng)
+
+	r_x.Mod(p())
+	r_y.Mod(p())
 
 	// calc X, Y
 	// X = g2^x

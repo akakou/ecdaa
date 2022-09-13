@@ -28,6 +28,7 @@ func (tpm *SWTPM) Close() {
 
 func (tpm *SWTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 	tpm.sk = FP256BN.Random(tpm.rng)
+	tpm.sk.Mod(p())
 
 	return nil, nil, nil
 }
@@ -47,6 +48,7 @@ func (tpm *SWTPM) Commit(handle *tpm2.AuthHandle, P1Tpm *tpm2.TPMSECCPoint, S2Tp
 	var eYBuf [int(FP256BN.MODBYTES)]byte
 
 	tpm.r1 = FP256BN.Random(tpm.rng)
+	tpm.r1.Mod(p())
 
 	P1 := ParseECPFromTPMFmt(P1Tpm)
 
@@ -119,10 +121,13 @@ func (tpm *SWTPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*t
 	var s1Buf [int(FP256BN.MODBYTES)]byte
 
 	n := FP256BN.Random(tpm.rng)
-	c2 := FP256BN.FromBytes(digest)
+	n.Mod(p())
+	// c2 := FP256BN.FromBytes(digest)
 
 	hash := NewHash()
-	hash.WriteBIG(n, c2)
+	hash.WriteBIG(n)
+	hash.WriteBytes(digest)
+
 	c1 := hash.SumToBIG()
 
 	s1 := FP256BN.Modmul(c1, tpm.sk, p())

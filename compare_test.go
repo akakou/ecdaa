@@ -9,6 +9,7 @@ func TestCompECP(t *testing.T) {
 	rng := InitRandom()
 
 	big := FP256BN.Random(rng)
+	big.Mod(p())
 
 	x := g1()
 	x = x.Mul(big)

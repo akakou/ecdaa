@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
+	"github.com/google/go-tpm/tpm2/transport/simulator"
 )
 
 var password = []byte("hello")
@@ -91,7 +92,9 @@ func publicParams() PublicParams {
 }
 
 func OpenRealTPM() (*RealTPM, error) {
-	thetpm, err := transport.OpenTPM("/dev/tpm0")
+	thetpm, err := simulator.OpenSimulator()
+	// thetpm, err := transport.OpenTPM("/dev/tpm0")
+
 	if err != nil {
 		return nil, err
 	}

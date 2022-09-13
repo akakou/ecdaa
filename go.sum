@@ -164,6 +164,7 @@ github.com/google/go-tpm-tools v0.0.0-20190906225433-1614c142f845/go.mod h1:AVfH
 github.com/google/go-tpm-tools v0.2.0 h1:pBflcn8x5iFohPScqlmLaImrC7ts/EUJa7ZY4FkTFq4=
 github.com/google/go-tpm-tools v0.2.0/go.mod h1:npUd03rQ60lxN7tzeBJreG38RvWwme2N1reF/eeiBk4=
 github.com/google/go-tpm-tools v0.2.1/go.mod h1:npUd03rQ60lxN7tzeBJreG38RvWwme2N1reF/eeiBk4=
+github.com/google/go-tpm-tools v0.3.1 h1:AFlmenDrIe0WU5AvpbfGFOLprTJTg/fCwmTyFdDEjbM=
 github.com/google/go-tpm-tools v0.3.1/go.mod h1:PSg+r5hSZI5tP3X7LBQx2sW1VSZUqZHBSrKyDqrB21U=
 github.com/google/go-tspi v0.2.1-0.20190423175329-115dea689aad h1:LnpS22S8V1HqbxjveESGAazHhi6BX9SwI2Rij7qZcXQ=
 github.com/google/go-tspi v0.2.1-0.20190423175329-115dea689aad/go.mod h1:xfMGI3G0PhxCdNVcYr1C4C+EizojDg/TXuX5by8CiHI=
