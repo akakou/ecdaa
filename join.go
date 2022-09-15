@@ -12,8 +12,9 @@ import (
 )
 
 type JoinSeeds struct {
-	m *FP256BN.BIG
-	B *FP256BN.ECP
+	basename []byte
+	s2       []byte
+	y2       *FP256BN.BIG
 }
 
 type JoinRequest struct {
@@ -26,38 +27,13 @@ type JoinRequest struct {
  */
 func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, error) {
 	var seed JoinSeeds
+	var basenameBuf [int(FP256BN.MODBYTES)]byte
 
-	// m := FP256BN.Random(rng)
-	// m := g1().GetX()
-	// B, i, err := HashToECP([]byte{0x01})
+	basename := FP256BN.Random(rng)
+	basename.ToBytes(basenameBuf[:])
 
-	// if err != nil {
-	// 	return nil, fmt.Errorf("%v\n", err)
-	// }
-
-	// seed.m = m
-	// seed.B = B
-
-	return &seed, nil
-}
-
-/**
- * Step2. generate request for join (by Member)
- */
-func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
-	var req JoinRequest
-	basename := []byte("")
-
-	/* create key and get public key */
-	handle, _, err := (*member.tpm).CreateKey()
-
-	if err != nil {
-		return nil, err
-	}
-
-	/* calc hash */
 	hash := NewHash()
-	hash.WriteBytes(basename)
+	hash.WriteBytes(basenameBuf[:])
 
 	B, i, err := hash.HashToECP()
 
@@ -68,11 +44,36 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	numBuf := make([]byte, binary.MaxVarintLen32)
 	binary.PutVarint(numBuf, int64(i))
 
-	s2Buf := append(numBuf, basename...)
+	s2Buf := append(numBuf, basenameBuf[:]...)
 
-	/* set zero buffers to P1 */
+	seed.basename = basenameBuf[:]
+	seed.s2 = s2Buf
+	seed.y2 = B.GetY()
+
+	return &seed, nil
+}
+
+/**
+ * Step2. generate request for join (by Member)
+ */
+func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
+	var req JoinRequest
+	/* create key and get public key */
+	handle, _, err := (*member.tpm).CreateKey()
+
+	if err != nil {
+		return nil, err
+	}
+
 	var xBuf [int(FP256BN.MODBYTES)]byte
 	var yBuf [int(FP256BN.MODBYTES)]byte
+
+	/* set zero buffers to P1 */
+	hash := NewHash()
+	hash.WriteBytes(seeds.s2)
+	bX := hash.SumToBIG()
+
+	B := FP256BN.NewECPbigs(bX, seeds.y2)
 
 	B.GetX().ToBytes(xBuf[:])
 	B.GetY().ToBytes(yBuf[:])
@@ -88,7 +89,7 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	/* set up argument for commit */
 	S2 := tpm2.TPM2BSensitiveData{
-		Buffer: s2Buf[:],
+		Buffer: seeds.s2[:],
 	}
 
 	Y2 := tpm2.TPM2BECCParameter{

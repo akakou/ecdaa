@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
@@ -60,8 +59,6 @@ func (tpm *SWTPM) Commit(handle *tpm2.AuthHandle, P1Tpm *tpm2.TPMSECCPoint, S2Tp
 	h := hash.SumToBIG()
 
 	B := FP256BN.NewECPbigs(h, y2)
-
-	fmt.Printf("test3: %v\n", B.GetX())
 
 	K := B.Mul(tpm.sk)
 	L := B.Mul(tpm.r1)
