@@ -116,53 +116,12 @@ func (tpm *SWTPM) Commit(handle *tpm2.AuthHandle, P1Tpm *tpm2.TPMSECCPoint, S2Tp
 	return &rspC, nil
 }
 
-// func (tpm *SWTPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error) {
-// 	var nBuf [int(FP256BN.MODBYTES)]byte
-// 	var s1Buf [int(FP256BN.MODBYTES)]byte
-
-// 	n := FP256BN.Random(tpm.rng)
-// 	n.Mod(p())
-// 	// c2 := FP256BN.FromBytes(digest)
-
-// 	hash := NewHash()
-// 	hash.WriteBIG(n)
-// 	hash.WriteBytes(digest)
-
-// 	c1 := hash.SumToBIG()
-
-// 	s1 := FP256BN.Modmul(c1, tpm.sk, p())
-// 	s1 = FP256BN.Modadd(tpm.r1, s1, p())
-
-// 	s1.ToBytes(s1Buf[:])
-// 	n.ToBytes(nBuf[:])
-
-// 	rspS := tpm2.SignResponse{
-// 		Signature: tpm2.TPMTSignature{
-// 			SigAlg: tpm2.TPMAlgECDAA,
-// 			Signature: tpm2.TPMUSignature{
-// 				ECDAA: &tpm2.TPMSSignatureECC{
-// 					SignatureR: tpm2.TPM2BECCParameter{
-// 						Buffer: nBuf[:],
-// 					},
-// 					SignatureS: tpm2.TPM2BECCParameter{
-// 						Buffer: s1Buf[:],
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-
-// 	return &rspS, nil
-// }
-
 func (tpm *SWTPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error) {
 	var nBuf [int(FP256BN.MODBYTES)]byte
 	var s1Buf [int(FP256BN.MODBYTES)]byte
 
 	n := FP256BN.Random(tpm.rng)
 	n.Mod(p())
-
-	// c2 := FP256BN.FromBytes(digest)
 
 	hash := NewHash()
 	hash.WriteBIG(n)

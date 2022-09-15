@@ -55,9 +55,6 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 		return nil, err
 	}
 
-	// the public key is named "Q"
-	// Q := ParseECPFromTPMFmt(public.PublicArea.Unique.ECC)
-
 	/* calc hash */
 	hash := NewHash()
 	hash.WriteBytes(basename)
