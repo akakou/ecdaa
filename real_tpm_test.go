@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/x509"
 	"fmt"
 	"testing"
 )
@@ -31,13 +32,13 @@ func TestReadEKCert(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 
-	_, err = tpm.ReadEKCert()
+	cert, err := tpm.ReadEKCert()
 
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
-	// if cert.PublicKeyAlgorithm != x509.ECDSA {
-	// 	t.Errorf("algorism is worng: %v", cert.PublicKeyAlgorithm)
-	// }
+	if cert.PublicKeyAlgorithm != x509.ECDSA {
+		t.Errorf("algorism is worng: %v", cert.PublicKeyAlgorithm)
+	}
 }
