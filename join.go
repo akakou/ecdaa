@@ -59,8 +59,6 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	// Q := ParseECPFromTPMFmt(public.PublicArea.Unique.ECC)
 
 	/* calc hash */
-	var y2Buf [int(FP256BN.MODBYTES)]byte
-
 	hash := NewHash()
 	hash.WriteBytes(basename)
 
@@ -74,8 +72,6 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	binary.PutVarint(numBuf, int64(i))
 
 	s2Buf := append(numBuf, basename...)
-	B.GetY().ToBytes(y2Buf[:])
-	fmt.Printf("test2: %v\n", B.GetX())
 
 	/* set zero buffers to P1 */
 	var xBuf [int(FP256BN.MODBYTES)]byte
@@ -99,7 +95,7 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	}
 
 	Y2 := tpm2.TPM2BECCParameter{
-		Buffer: y2Buf[:],
+		Buffer: yBuf[:],
 	}
 
 	/* run commit and get U1 */
@@ -126,7 +122,7 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	/* sign and get s1, n */
 	var c2Bytes [32]byte
-	// c2.ToBytes(c2Bytes[:])
+	c2.ToBytes(c2Bytes[:])
 
 	sign, err := (*member.tpm).Sign(c2Bytes[:], comRsp.Counter, handle)
 
