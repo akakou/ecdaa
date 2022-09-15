@@ -20,13 +20,22 @@ type JoinSeeds struct {
 type JoinRequest struct {
 	public *tpm2.TPM2BPublic
 	cert   *x509.Certificate
+	c1     *FP256BN.BIG
+	s1     *FP256BN.BIG
+	n      *FP256BN.BIG
+	Q      *FP256BN.ECP
+}
+
+type IssuerJoinSession struct {
+	B *FP256BN.ECP
 }
 
 /**
  * Step1. generate seed for join (by Issuer)
  */
-func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, error) {
+func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession, error) {
 	var seed JoinSeeds
+	var session IssuerJoinSession
 	var basenameBuf [int(FP256BN.MODBYTES)]byte
 
 	basename := FP256BN.Random(rng)
@@ -38,7 +47,7 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, error) {
 	B, i, err := hash.HashToECP()
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	numBuf := make([]byte, binary.MaxVarintLen32)
@@ -50,7 +59,9 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, error) {
 	seed.s2 = s2Buf
 	seed.y2 = B.GetY()
 
-	return &seed, nil
+	session.B = B
+
+	return &seed, &session, nil
 }
 
 /**
@@ -137,28 +148,47 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	hash.WriteBytes(c2Bytes[:])
 	c1 := hash.SumToBIG()
 
-	UDash := B.Mul(s1)
-	UDashTmp := Q.Mul(c1)
+	req.s1 = s1
+	req.c1 = c1
+	req.n = n
 
-	UDash.Sub(UDashTmp)
-	U1.Affine()
-	UDash.Affine()
-
-	if !compECP(U1, UDash) {
-		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", U1.ToString(), UDash.ToString())
-	}
+	// todo: remove
+	req.Q = Q
 
 	return &req, nil
 }
 
-// /**
-//  * Step3. make credential for join (by Issuer)
-//  */
-// func (_ *Member) make_cred(n FP256BN.BIG, rng *core.RAND) JoinRequest {
-// 	var req JoinRequest
+/**
+ * Step3. make credential for join (by Issuer)
+ */
+func (_ *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*JoinRequest, error) {
+	B := session.B
+	Q := req.Q
 
-// 	return req
-// }
+	U1 := B.Mul(req.s1)
+	UTmp := Q.Mul(req.c1)
+
+	U1.Sub(UTmp)
+	U1.Affine()
+
+	hash := NewHash()
+	hash.WriteECP(U1, B, Q)
+	c2 := hash.SumToBIG()
+
+	var c2Buf [FP256BN.MODBYTES]byte
+	c2.ToBytes(c2Buf[:])
+
+	hash = NewHash()
+	hash.WriteBIG(req.n)
+	hash.WriteBytes(c2Buf[:])
+	c1 := hash.SumToBIG()
+
+	if FP256BN.Comp(c1, req.c1) != 0 {
+		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", c1.ToString(), req.c1.ToString())
+	}
+
+	return req, nil
+}
 
 // /**
 //  * Step4. activate credential for join with TPM2_activate_credential (by Member)

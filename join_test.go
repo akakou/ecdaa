@@ -15,13 +15,19 @@ func TestJoinWithReal(t *testing.T) {
 	}
 
 	issuer := RandomIssuer(rng)
-	seed, err := issuer.genSeedForJoin(rng)
+	seed, session, err := issuer.genSeedForJoin(rng)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 
 	member := NewMember(tpm)
-	_, err = member.genReqForJoin(seed, rng)
+	req, err := member.genReqForJoin(seed, rng)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	_, err = issuer.MakeCred(req, session, rng)
+
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -34,13 +40,19 @@ func TestJoinWithSW(t *testing.T) {
 	defer tpm.Close()
 
 	issuer := RandomIssuer(rng)
-	seed, err := issuer.genSeedForJoin(rng)
+	seed, session, err := issuer.genSeedForJoin(rng)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 
 	member := NewMember(tpm)
-	_, err = member.genReqForJoin(seed, rng)
+	req, err := member.genReqForJoin(seed, rng)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	_, err = issuer.MakeCred(req, session, rng)
+
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
