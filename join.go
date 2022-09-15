@@ -135,7 +135,8 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	/* calc hash c1 = H( n | c2 ) */
 	hash = NewHash()
-	hash.WriteBIG(n, c2)
+	hash.WriteBIG(n)
+	hash.WriteBytes(c2Bytes[:])
 	c1 := hash.SumToBIG()
 
 	UDash := B.Mul(s1)
