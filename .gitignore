@@ -21,4 +21,4 @@ encrypted_aik.json
 
 /thirdparty/miracl
 /thirdparty/core
-
+thirdparty/go-tpm/

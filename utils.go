@@ -2,10 +2,11 @@ package main
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"math/big"
 	"miracl/core"
 	"miracl/core/FP256BN"
+
+	"github.com/google/go-tpm/tpm2"
 )
 
 /**
@@ -25,24 +26,19 @@ func InitRandom() *core.RAND {
 	return rng
 }
 
-/**
- * Hash some ECP2 values.
- *
- * Hash some ECP2 values with SHA256 algorism, and it returns a big integer.
- */
-func HashECP2s(n ...*FP256BN.ECP2) *FP256BN.BIG {
-	hasher := sha256.New()
-	var buf [2*int(FP256BN.MODBYTES) + 1]byte
+func ParseECPFromTPMFmt(tpmEcc *tpm2.TPMSECCPoint) *FP256BN.ECP {
+	x := FP256BN.FromBytes(tpmEcc.X.Buffer)
+	y := FP256BN.FromBytes(tpmEcc.Y.Buffer)
 
-	for _, v := range n {
-		v.ToBytes(buf[:], true)
-		hasher.Write(buf[:])
-	}
+	return FP256BN.NewECPbigs(x, y)
+}
 
-	retHash := hasher.Sum(nil)
-	resBIG := FP256BN.FromBytes(retHash)
+func ParseECP2FromTPMFmt(tpmEcc *tpm2.TPMSECCPoint) *FP256BN.ECP2 {
+	bigX := FP256BN.FromBytes(tpmEcc.X.Buffer)
+	bigY := FP256BN.FromBytes(tpmEcc.Y.Buffer)
 
-	resBIG.Mod(p())
+	fpX := FP256BN.NewFP2big(bigX)
+	fpY := FP256BN.NewFP2big(bigY)
 
-	return resBIG
+	return FP256BN.NewECP2fp2s(fpX, fpY)
 }

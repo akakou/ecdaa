@@ -30,3 +30,7 @@ func g1() *FP256BN.ECP {
 func g2() *FP256BN.ECP2 {
 	return FP256BN.ECP2_generator()
 }
+
+func zero() *FP256BN.BIG {
+	return FP256BN.NewBIGint(0)
+}

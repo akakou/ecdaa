@@ -7,10 +7,9 @@ import (
 func TestAll(t *testing.T) {
 	rng := InitRandom()
 
-	isk := RandomISK(rng)
-	ipk := RandomIPK(&isk, rng)
+	issuer := RandomIssuer(rng)
 
-	err := VerifyIPK(&ipk)
+	err := VerifyIPK(&issuer.ipk)
 	if err != nil {
 		t.Errorf("error: %v", err)
 	}
