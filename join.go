@@ -161,7 +161,7 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 /**
  * Step3. make credential for join (by Issuer)
  */
-func (_ *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*JoinRequest, error) {
+func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*JoinRequest, error) {
 	B := session.B
 	Q := req.Q
 
@@ -186,6 +186,20 @@ func (_ *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *cor
 	if FP256BN.Comp(c1, req.c1) != 0 {
 		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", c1.ToString(), req.c1.ToString())
 	}
+
+	var cred Credential
+
+	invY := issuer.ipk.s_y
+	invY.Invmodp(p())
+	cred.A = B.Mul(invY)
+	cred.B = B
+
+	C := FP256BN.NewECP()
+	C.Copy(cred.A)
+	C.Add(Q)
+	cred.C.Mul(issuer.isk.x)
+
+	cred.D = Q
 
 	return req, nil
 }
