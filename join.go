@@ -1,12 +1,12 @@
 package main
 
 import (
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/binary"
 	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
-
-	"github.com/google/certificate-transparency-go/x509"
 
 	"github.com/google/go-tpm/tpm2"
 )
@@ -155,6 +155,8 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	// todo: remove
 	req.Q = Q
 
+	req.cert, err = (*member.tpm).ReadEKCert()
+
 	return &req, nil
 }
 
@@ -200,6 +202,9 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 	cred.C.Mul(issuer.isk.x)
 
 	cred.D = Q
+
+	a := req.cert.PublicKey.(*rsa.PublicKey)
+	fmt.Print("%w", a)
 
 	// ac := tpm2.ActivateCredential{
 	// 	ActivateHandle: tpm2.NamedHandle{

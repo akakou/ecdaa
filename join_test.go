@@ -33,27 +33,27 @@ func TestJoinWithReal(t *testing.T) {
 	}
 }
 
-func TestJoinWithSW(t *testing.T) {
-	rng := InitRandom()
+// func TestJoinWithSW(t *testing.T) {
+// 	rng := InitRandom()
 
-	tpm := NewSWTPM(rng)
-	defer tpm.Close()
+// 	tpm := NewSWTPM(rng)
+// 	defer tpm.Close()
 
-	issuer := RandomIssuer(rng)
-	seed, session, err := issuer.genSeedForJoin(rng)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
+// 	issuer := RandomIssuer(rng)
+// 	seed, session, err := issuer.genSeedForJoin(rng)
+// 	if err != nil {
+// 		t.Fatalf("%v", err)
+// 	}
 
-	member := NewMember(tpm)
-	req, err := member.genReqForJoin(seed, rng)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
+// 	member := NewMember(tpm)
+// 	req, err := member.genReqForJoin(seed, rng)
+// 	if err != nil {
+// 		t.Fatalf("%v", err)
+// 	}
 
-	_, err = issuer.MakeCred(req, session, rng)
+// 	_, err = issuer.MakeCred(req, session, rng)
 
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-}
+// 	if err != nil {
+// 		t.Fatalf("%v", err)
+// 	}
+// }
