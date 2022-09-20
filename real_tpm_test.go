@@ -38,7 +38,7 @@ func TestReadEKCert(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 
-	if cert.PublicKeyAlgorithm != x509.ECDSA {
+	if cert.PublicKeyAlgorithm != x509.RSA {
 		t.Errorf("algorism is worng: %v", cert.PublicKeyAlgorithm)
 	}
 }

@@ -194,12 +194,26 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 	cred.A = B.Mul(invY)
 	cred.B = B
 
-	C := FP256BN.NewECP()
-	C.Copy(cred.A)
-	C.Add(Q)
+	cred.C = FP256BN.NewECP()
+	cred.C.Copy(cred.A)
+	cred.C.Add(Q)
 	cred.C.Mul(issuer.isk.x)
 
 	cred.D = Q
+
+	// ac := tpm2.ActivateCredential{
+	// 	ActivateHandle: tpm2.NamedHandle{
+	// 		Handle: srkCreateRsp.ObjectHandle,
+	// 		Name:   srkCreateRsp.Name,
+	// 	},
+	// 	KeyHandle: tpm2.AuthHandle{
+	// 		Handle: ekCreateRsp.ObjectHandle,
+	// 		Name:   ekCreateRsp.Name,
+	// 		Auth:   Policy(TPMAlgSHA256, 16, ekPolicy),
+	// 	},
+	// 	CredentialBlob: mcRsp.CredentialBlob,
+	// 	Secret:         mcRsp.Secret,
+	// }
 
 	return req, nil
 }

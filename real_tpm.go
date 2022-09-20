@@ -184,9 +184,10 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
 	// TODO: rspRP.NVPublic.NVPublic.DataSize may be wrong or required to process.
 	// Because we don't know how to fix it now, we remove data based on fixed value.
-	removeLen := 825
+	// removeLen := 825
+	removeLen := 431
 
-	certIndex := 0x1C0000A
+	certIndex := 0x01C00002
 	nvIndex := tpm2.TPMHandle(certIndex)
 
 	result := []byte{}
@@ -222,7 +223,6 @@ func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
 		}
 
 		result = append(result, rspNV.Data.Buffer...)
-
 	}
 
 	cert, err := x509.ParseCertificate(result)
