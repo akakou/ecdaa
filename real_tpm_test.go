@@ -17,7 +17,7 @@ func TestCreateKey(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 
-	handle, _, keyP, err := tpm.CreateKey()
+	handle, _, _, keyP, err := tpm.CreateKey()
 
 	if err != nil {
 		t.Errorf("%v", err)
@@ -52,26 +52,14 @@ func TestActivateCredential(t *testing.T) {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
 
-	_, ekHandle, _, _ := tpm.CreateKey()
-
-	srkCreate := tpm2.CreatePrimary{
-		PrimaryHandle: tpm2.TPMRHOwner,
-		InPublic: tpm2.TPM2BPublic{
-			PublicArea: tpm2.ECCSRKTemplate,
-		},
-	}
-
-	srkCreateRsp, err := srkCreate.Execute(tpm.tpm)
-	if err != nil {
-		t.Fatalf("could not generate SRK: %v", err)
-	}
+	_, ekHandle, srkHandle, _, _ := tpm.CreateKey()
 
 	secret := tpm2.TPM2BDigest{Buffer: []byte("Secrets!!!")}
 
 	mc := tpm2.MakeCredential{
 		Handle:      ekHandle.Handle,
 		Credential:  secret,
-		ObjectNamae: srkCreateRsp.Name,
+		ObjectNamae: srkHandle.Name,
 	}
 
 	mcRsp, err := mc.Execute(tpm.tpm)
@@ -79,22 +67,13 @@ func TestActivateCredential(t *testing.T) {
 		t.Fatalf("could not make credential: %v", err)
 	}
 
-	ac := tpm2.ActivateCredential{
-		ActivateHandle: tpm2.NamedHandle{
-			Handle: srkCreateRsp.ObjectHandle,
-			Name:   srkCreateRsp.Name,
-		},
-		KeyHandle:      *ekHandle,
-		CredentialBlob: mcRsp.CredentialBlob,
-		Secret:         mcRsp.Secret,
-	}
+	result, err := tpm.ActivateCredential(ekHandle, srkHandle, mcRsp.CredentialBlob.Buffer, mcRsp.Secret.Buffer)
 
-	acRsp, err := ac.Execute(tpm.tpm)
 	if err != nil {
-		t.Fatalf("could not activate credential: %v", err)
+		t.Errorf("%v", err)
 	}
 
-	if !bytes.Equal(acRsp.CertInfo.Buffer, secret.Buffer) {
-		t.Errorf("want %x got %x", secret.Buffer, acRsp.CertInfo.Buffer)
+	if !bytes.Equal(result, secret.Buffer) {
+		t.Errorf("want %x got %x", secret.Buffer, result)
 	}
 }

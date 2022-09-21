@@ -120,7 +120,7 @@ func (tpm *RealTPM) Close() {
 	tpm.tpm.Close()
 }
 
-func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
+func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHandle, *tpm2.TPM2BPublic, error) {
 	params := publicParams()
 	auth := tpm2.PasswordAuth(password)
 
@@ -133,7 +133,24 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.TPM2B
 
 	ekCreateRsp, err := ekCreate.Execute(tpm.tpm)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create ek: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("create ek: %v", err)
+	}
+
+	srkCreate := tpm2.CreatePrimary{
+		PrimaryHandle: tpm2.TPMRHOwner,
+		InPublic: tpm2.TPM2BPublic{
+			PublicArea: tpm2.ECCSRKTemplate,
+		},
+	}
+
+	srkCreateRsp, err := srkCreate.Execute(tpm.tpm)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("create SRK: %v", err)
+	}
+
+	srkHandle := tpm2.NamedHandle{
+		Handle: srkCreateRsp.ObjectHandle,
+		Name:   srkCreateRsp.Name,
 	}
 
 	create := tpm2.CreatePrimary{
@@ -158,7 +175,7 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.TPM2B
 
 	rspC, err := create.Execute(tpm.tpm)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("create: %v", err)
 	}
 
 	handle := tpm2.AuthHandle{
@@ -167,7 +184,27 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.TPM2B
 		Auth:   auth,
 	}
 
-	return &handle, &ekHandle, &rspC.OutPublic, nil
+	return &handle, &ekHandle, &srkHandle, &rspC.OutPublic, nil
+}
+
+func (tpm *RealTPM) ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, wrapSymmetric, encSeed []byte) ([]byte, error) {
+	ac := tpm2.ActivateCredential{
+		ActivateHandle: *srkHandle,
+		KeyHandle:      *ekHandle,
+		CredentialBlob: tpm2.TPM2BIDObject{
+			Buffer: wrapSymmetric,
+		},
+		Secret: tpm2.TPM2BEncryptedSecret{
+			Buffer: encSeed,
+		},
+	}
+
+	acRsp, err := ac.Execute(tpm.tpm)
+	if err != nil {
+		return nil, fmt.Errorf("activate credential: %v", err)
+	}
+
+	return acRsp.CertInfo.Buffer, nil
 }
 
 func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
