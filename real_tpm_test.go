@@ -52,20 +52,20 @@ func TestReadEKCert(t *testing.T) {
 }
 
 func TestActivateCredential(t *testing.T) {
-	tpm, err := OpenRealTPM()
-	defer tpm.Close()
-
 	credential := []byte("hello")
 	encCred := make([]byte, len(credential))
 	wrapedSecret := make([]byte, int(256))
 
-	iv := []byte("0123456789abcdef")
-
-	handle, primaryHandle, _, err := tpm.CreateKey()
+	tpm, err := OpenRealTPM()
+	defer tpm.Close()
 
 	if err != nil {
 		t.Errorf("%v", err)
 	}
+
+	iv := []byte("0123456789abcdef")
+
+	_, ekHandle, _, err := tpm.CreateKey()
 
 	if err != nil {
 		t.Errorf("%v", err)
@@ -116,10 +116,25 @@ func TestActivateCredential(t *testing.T) {
 	// 4. encrypted_seed = enc(seed, EK-C)
 	encSeed := secret
 
+	srkCreate := tpm2.CreatePrimary{
+		PrimaryHandle: tpm2.TPMRHOwner,
+		InPublic: tpm2.TPM2BPublic{
+			PublicArea: tpm2.RSASRKTemplate,
+		},
+	}
+
+	srkCreateRsp, err := srkCreate.Execute(tpm.tpm)
+	if err != nil {
+		t.Fatalf("could not generate SRK: %v", err)
+	}
+
 	// 5. activate credential
 	ac := tpm2.ActivateCredential{
-		ActivateHandle: primaryHandle,
-		KeyHandle:      handle,
+		ActivateHandle: tpm2.NamedHandle{
+			Handle: srkCreateRsp.ObjectHandle,
+			Name:   srkCreateRsp.Name,
+		},
+		KeyHandle: *ekHandle,
 		CredentialBlob: tpm2.TPM2BIDObject{
 			Buffer: wrapedSecret,
 		},
