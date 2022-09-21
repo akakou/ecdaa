@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -50,6 +52,9 @@ func TestActivateCredential(t *testing.T) {
 	tpm, err := OpenRealTPM()
 	defer tpm.Close()
 
+	credential := []byte("hello")
+	encCred := make([]byte, len(credential))
+
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -68,6 +73,15 @@ func TestActivateCredential(t *testing.T) {
 	if err != nil {
 		t.Errorf("%v", err)
 	}
+
+	secretCipher, err := aes.NewCipher(secret[:32])
+
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	secretCFBEncrypter := cipher.NewCFBEncrypter(secretCipher, []byte("aaaaaaaaaaaaaaaa"))
+	secretCFBEncrypter.XORKeyStream(encCred, credential)
 
 	fmt.Printf("%v", secret)
 }
