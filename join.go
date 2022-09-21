@@ -69,7 +69,7 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession,
 func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
 	var req JoinRequest
 	/* create key and get public key */
-	handle, _, err := (*member.tpm).CreateKey()
+	handle, _, _, err := (*member.tpm).CreateKey()
 
 	if err != nil {
 		return nil, err

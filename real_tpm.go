@@ -109,7 +109,7 @@ func (tpm *RealTPM) Close() {
 	tpm.tpm.Close()
 }
 
-func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
+func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 	params := publicParams()
 	auth := tpm2.PasswordAuth(password)
 
@@ -129,7 +129,7 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 
 	rspCP, err := primary.Execute(tpm.tpm)
 	if err != nil {
-		return nil, nil, fmt.Errorf("create primary: %v", err)
+		return nil, nil, nil, fmt.Errorf("create primary: %v", err)
 	}
 
 	create := tpm2.Create{
@@ -154,7 +154,7 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 
 	rspC, err := create.Execute(tpm.tpm)
 	if err != nil {
-		return nil, nil, fmt.Errorf("create: %v", err)
+		return nil, nil, nil, fmt.Errorf("create: %v", err)
 	}
 
 	load := tpm2.Load{
@@ -169,7 +169,7 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 
 	rspL, err := load.Execute(tpm.tpm)
 	if err != nil {
-		return nil, nil, fmt.Errorf("load: %v", err)
+		return nil, nil, nil, fmt.Errorf("load: %v", err)
 	}
 
 	handle := tpm2.AuthHandle{
@@ -178,7 +178,12 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 		Auth:   auth,
 	}
 
-	return &handle, &rspC.OutPublic, nil
+	primaryHandle := tpm2.AuthHandle{
+		Handle: rspCP.ObjectHandle,
+		Name:   rspCP.Name,
+	}
+
+	return &handle, &primaryHandle, &rspC.OutPublic, nil
 }
 
 func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
