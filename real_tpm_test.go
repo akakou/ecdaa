@@ -1,6 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"fmt"
 	"testing"
@@ -41,4 +44,30 @@ func TestReadEKCert(t *testing.T) {
 	if cert.PublicKeyAlgorithm != x509.RSA {
 		t.Errorf("algorism is worng: %v", cert.PublicKeyAlgorithm)
 	}
+}
+
+func TestActivateCredential(t *testing.T) {
+	tpm, err := OpenRealTPM()
+	defer tpm.Close()
+
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	cert, err := tpm.ReadEKCert()
+
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	pubkey := cert.PublicKey.(*rsa.PublicKey)
+
+	seedHash := sha256.New()
+
+	secret, err := rsa.EncryptOAEP(seedHash, rand.Reader, pubkey, []byte("seed"), []byte(""))
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	fmt.Printf("%v", secret)
 }
