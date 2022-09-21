@@ -52,9 +52,9 @@ func TestReadEKCert(t *testing.T) {
 }
 
 func TestActivateCredential(t *testing.T) {
-	credential := []byte("hello")
-	encCred := make([]byte, len(credential))
-	wrapedSecret := make([]byte, int(256))
+	// credential := []byte("hello")
+	// encCred := make([]byte, len(credential))
+	wrapedSecret := make([]byte, int(32))
 
 	tpm, err := OpenRealTPM()
 	defer tpm.Close()
@@ -83,23 +83,23 @@ func TestActivateCredential(t *testing.T) {
 	seed := []byte("seed")
 
 	// 2. secret = F?(seed)
-	seedHash := sha256.New()
-	secret, err := rsa.EncryptOAEP(seedHash, rand.Reader, pubkey, seed, []byte(""))
-	if err != nil {
-		t.Errorf("%v", err)
-	}
-
-	secretCipher, err := aes.NewCipher(secret[:32])
-
+	secret, err := legacy.KDFa(legacy.AlgSHA256, seed, "", nil, nil, 32*8)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
 
 	// 3. encrypted_credential = enc(credential, secret)
-	secretCFBEncrypter := cipher.NewCFBEncrypter(secretCipher, iv)
-	secretCFBEncrypter.XORKeyStream(encCred, credential)
+	// secretCipher, err := aes.NewCipher(secret)
 
-	symEncKey, err := legacy.KDFa(legacy.AlgSHA256, seed, "", nil, nil, 256)
+	// if err != nil {
+	// 	t.Errorf("%v", err)
+	// }
+
+	// secretCFBEncrypter := cipher.NewCFBEncrypter(secretCipher, iv)
+	// secretCFBEncrypter.XORKeyStream(encCred, credential)
+
+	// 5. hmac, symmetric_encryption_key = KDFa(seed, name)
+	symEncKey, err := legacy.KDFa(legacy.AlgSHA256, seed, "", nil, nil, 32*8)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -113,9 +113,13 @@ func TestActivateCredential(t *testing.T) {
 	symEncKeyCFBEncrypter := cipher.NewCFBEncrypter(symEncKeyCipher, iv)
 	symEncKeyCFBEncrypter.XORKeyStream(wrapedSecret, secret)
 
-	// 4. encrypted_seed = enc(seed, EK-C)
-	encSeed := secret
+	// 6. encrypted_seed = enc(seed, EK-C)
+	encSeed, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, pubkey, seed, []byte("IDENTITY"))
+	if err != nil {
+		t.Errorf("%v", err)
+	}
 
+	// read srkCreate key
 	srkCreate := tpm2.CreatePrimary{
 		PrimaryHandle: tpm2.TPMRHOwner,
 		InPublic: tpm2.TPM2BPublic{
@@ -148,5 +152,5 @@ func TestActivateCredential(t *testing.T) {
 		t.Fatalf("could not activate credential: %v", err)
 	}
 
-	fmt.Printf("%v", acRsp.CertInfo.Buffer)
+	fmt.Printf("cert: %v\n", acRsp.CertInfo.Buffer)
 }
