@@ -9,6 +9,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"testing"
+
+	legacy "github.com/google/go-tpm/legacy/tpm2"
 )
 
 func TestCreateKey(t *testing.T) {
@@ -54,6 +56,7 @@ func TestActivateCredential(t *testing.T) {
 
 	credential := []byte("hello")
 	encCred := make([]byte, len(credential))
+	wrapedSecret := make([]byte, int(256))
 
 	if err != nil {
 		t.Errorf("%v", err)
@@ -67,9 +70,11 @@ func TestActivateCredential(t *testing.T) {
 
 	pubkey := cert.PublicKey.(*rsa.PublicKey)
 
+	seed := []byte("seed")
+
 	seedHash := sha256.New()
 
-	secret, err := rsa.EncryptOAEP(seedHash, rand.Reader, pubkey, []byte("seed"), []byte(""))
+	secret, err := rsa.EncryptOAEP(seedHash, rand.Reader, pubkey, seed, []byte(""))
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -83,5 +88,19 @@ func TestActivateCredential(t *testing.T) {
 	secretCFBEncrypter := cipher.NewCFBEncrypter(secretCipher, []byte("aaaaaaaaaaaaaaaa"))
 	secretCFBEncrypter.XORKeyStream(encCred, credential)
 
-	fmt.Printf("%v", secret)
+	symEncKey, err := legacy.KDFa(legacy.AlgSHA256, seed, "", nil, nil, 256)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	symEncKeyCipher, err := aes.NewCipher(symEncKey)
+
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
+	symEncKeyCFBEncrypter := cipher.NewCFBEncrypter(symEncKeyCipher, []byte("aaaaaaaaaaaaaaaa"))
+	symEncKeyCFBEncrypter.XORKeyStream(wrapedSecret, secret)
+
+	fmt.Printf("%v", wrapedSecret)
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/binary"
 	"fmt"
@@ -203,31 +202,37 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 
 	cred.D = Q
 
-	a := req.cert.PublicKey.(*rsa.PublicKey)
-	fmt.Print("%w", a)
+	// a := req.cert.PublicKey.(*rsa.PublicKey)
 
-	// ac := tpm2.ActivateCredential{
-	// 	ActivateHandle: tpm2.NamedHandle{
-	// 		Handle: srkCreateRsp.ObjectHandle,
-	// 		Name:   srkCreateRsp.Name,
-	// 	},
-	// 	KeyHandle: tpm2.AuthHandle{
-	// 		Handle: ekCreateRsp.ObjectHandle,
-	// 		Name:   ekCreateRsp.Name,
-	// 		Auth:   Policy(TPMAlgSHA256, 16, ekPolicy),
-	// 	},
-	// 	CredentialBlob: mcRsp.CredentialBlob,
-	// 	Secret:         mcRsp.Secret,
-	// }
+	// cred :=
+	// seed := FP256BN.Random(rng)
+
+	// secret := rsa.EncryptOAEP()
+
+	// fmt.Print("%w", a)
 
 	return req, nil
 }
 
-// /**
-//  * Step4. activate credential for join with TPM2_activate_credential (by Member)
-//  */
-// func (_ *Member) activate_cred(n FP256BN.BIG, rng *core.RAND) JoinRequest {
+/**
+ * Step4. activate credential for join with TPM2_activate_credential (by Member)
+ */
+// func (_ *Member) ActivateCredential(n FP256BN.BIG, rng *core.RAND) JoinRequest {
 // 	var req JoinRequest
+
+// 	ac := tpm2.ActivateCredential{
+// 		ActivateHandle: tpm2.NamedHandle{
+// 			Handle: srkCreateRsp.ObjectHandle,
+// 			Name:   srkCreateRsp.Name,
+// 		},
+// 		KeyHandle: tpm2.AuthHandle{
+// 			Handle: ekCreateRsp.ObjectHandle,
+// 			Name:   ekCreateRsp.Name,
+// 			Auth:   Policy(TPMAlgSHA256, 16, ekPolicy),
+// 		},
+// 		CredentialBlob: mcRsp.CredentialBlob,
+// 		Secret:         mcRsp.Secret,
+// 	}
 
 // 	return req
 // }
