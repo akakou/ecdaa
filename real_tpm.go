@@ -10,6 +10,16 @@ import (
 
 var password = []byte("hello")
 
+func ekPolicy(t transport.TPM, handle tpm2.TPMISHPolicy, nonceTPM tpm2.TPM2BNonce) error {
+	cmd := tpm2.PolicySecret{
+		AuthHandle:    tpm2.TPMRHEndorsement,
+		PolicySession: handle,
+		NonceTPM:      nonceTPM,
+	}
+	_, err := cmd.Execute(t)
+	return err
+}
+
 type RealTPM struct {
 	tpm transport.TPMCloser
 }
@@ -29,7 +39,7 @@ func publicParams() PublicParams {
 			FixedTPM:            true,
 			FixedParent:         true,
 			SensitiveDataOrigin: true,
-			UserWithAuth:        true,
+			UserWithAuth:        false,
 			Decrypt:             true,
 			Restricted:          true,
 		},
@@ -61,6 +71,7 @@ func publicParams() PublicParams {
 			UserWithAuth:        true,
 			SensitiveDataOrigin: true,
 			SignEncrypt:         true,
+			AdminWithPolicy:     true,
 		},
 		Parameters: tpm2.TPMUPublicParms{
 			ECCDetail: &tpm2.TPMSECCParms{
@@ -113,7 +124,19 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.TPM2B
 	params := publicParams()
 	auth := tpm2.PasswordAuth(password)
 
-	primary := tpm2.CreatePrimary{
+	ekCreate := tpm2.CreatePrimary{
+		PrimaryHandle: tpm2.TPMRHEndorsement,
+		InPublic: tpm2.TPM2BPublic{
+			PublicArea: tpm2.RSAEKTemplate,
+		},
+	}
+
+	ekCreateRsp, err := ekCreate.Execute(tpm.tpm)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("create ek: %v", err)
+	}
+
+	create := tpm2.CreatePrimary{
 		PrimaryHandle: tpm2.TPMRHOwner,
 		InSensitive: tpm2.TPM2BSensitiveCreate{
 			Sensitive: tpm2.TPMSSensitiveCreate{
@@ -123,33 +146,14 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.TPM2B
 			},
 		},
 		InPublic: tpm2.TPM2BPublic{
-			PublicArea: params.primary,
-		},
-	}
-
-	rspCP, err := primary.Execute(tpm.tpm)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("create primary: %v", err)
-	}
-
-	create := tpm2.Create{
-		ParentHandle: tpm2.AuthHandle{
-			Handle: rspCP.ObjectHandle,
-			Name:   rspCP.Name,
-			Auth:   auth,
-		},
-
-		InSensitive: tpm2.TPM2BSensitiveCreate{
-			Sensitive: tpm2.TPMSSensitiveCreate{
-				UserAuth: tpm2.TPM2BAuth{
-					Buffer: password,
-				},
-			},
-		},
-
-		InPublic: tpm2.TPM2BPublic{
 			PublicArea: params.key,
 		},
+	}
+
+	ekHandle := tpm2.AuthHandle{
+		Handle: ekCreateRsp.ObjectHandle,
+		Name:   ekCreateRsp.Name,
+		Auth:   tpm2.Policy(tpm2.TPMAlgSHA256, 16, ekPolicy),
 	}
 
 	rspC, err := create.Execute(tpm.tpm)
@@ -157,33 +161,13 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.TPM2B
 		return nil, nil, nil, fmt.Errorf("create: %v", err)
 	}
 
-	load := tpm2.Load{
-		ParentHandle: tpm2.AuthHandle{
-			Handle: rspCP.ObjectHandle,
-			Name:   rspCP.Name,
-			Auth:   auth,
-		},
-		InPrivate: rspC.OutPrivate,
-		InPublic:  rspC.OutPublic,
-	}
-
-	rspL, err := load.Execute(tpm.tpm)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("load: %v", err)
-	}
-
 	handle := tpm2.AuthHandle{
-		Handle: rspL.ObjectHandle,
-		Name:   rspL.Name,
+		Handle: rspC.ObjectHandle,
+		Name:   rspC.Name,
 		Auth:   auth,
 	}
 
-	primaryHandle := tpm2.AuthHandle{
-		Handle: rspCP.ObjectHandle,
-		Name:   rspCP.Name,
-	}
-
-	return &handle, &primaryHandle, &rspC.OutPublic, nil
+	return &handle, &ekHandle, &rspC.OutPublic, nil
 }
 
 func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
