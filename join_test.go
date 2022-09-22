@@ -14,6 +14,12 @@ func TestJoinWithReal(t *testing.T) {
 	}
 
 	issuer := RandomIssuer(rng)
+
+	err = VerifyIPK(&issuer.ipk)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+
 	seed, issuerSession, err := issuer.GenSeedForJoin(rng)
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -39,10 +45,10 @@ func TestJoinWithReal(t *testing.T) {
 
 	member = NewMember(tpm)
 
-	cred, err := member.ActivateCredential(encCred, memberSession)
+	cred, err := member.ActivateCredential(encCred, memberSession, &issuer.ipk)
 
 	if err != nil {
-		t.Fatalf("%v", err)
+		t.Fatalf("activate credential: %v", err)
 	}
 
 	if FP256BN.Comp(cred.A.GetX(), issuerSession.cred.A.GetX()) != 0 || FP256BN.Comp(cred.A.GetY(), issuerSession.cred.A.GetY()) != 0 {

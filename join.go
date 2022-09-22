@@ -221,15 +221,16 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 
 	var cred Credential
 
-	invY := issuer.ipk.s_y
+	invY := FP256BN.NewBIGcopy(issuer.isk.y)
 	invY.Invmodp(p())
-	cred.A = B.Mul(invY)
-	cred.B = B
 
+	cred.A = B.Mul(invY)
+
+	cred.B = B
 	cred.C = FP256BN.NewECP()
 	cred.C.Copy(cred.A)
 	cred.C.Add(Q)
-	cred.C.Mul(issuer.isk.x)
+	cred.C = cred.C.Mul(issuer.isk.x)
 
 	cred.D = Q
 
@@ -278,7 +279,7 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 /**
  * Step4. activate credential for join with TPM2_activate_credential (by Member)
  */
-func (member *Member) ActivateCredential(encCred *EncCred, session *MemberSession) (*Credential, error) {
+func (member *Member) ActivateCredential(encCred *EncCred, session *MemberSession, ipk *IPK) (*Credential, error) {
 	var cred Credential
 	secret, err := (*member.tpm).ActivateCredential(session.ekHandle, session.srkHandle, encCred.wrapSymmetric, encCred.encSeed)
 
@@ -297,6 +298,30 @@ func (member *Member) ActivateCredential(encCred *EncCred, session *MemberSessio
 
 	cred.B = session.B
 	cred.D = session.D
+
+	tmp := FP256BN.NewECP()
+	tmp.Copy(cred.A)
+	tmp.Add(cred.D)
+
+	a := FP256BN.Ate(ipk.Y, cred.A)
+	b := FP256BN.Ate(g2(), cred.B)
+
+	a = FP256BN.Fexp(a)
+	b = FP256BN.Fexp(b)
+
+	if !a.Equals(b) {
+		return nil, fmt.Errorf("Ate(ipk.Y, cred.A) != Ate(g2(), cred.B)")
+	}
+
+	c := FP256BN.Ate(g2(), cred.C)
+	d := FP256BN.Ate(ipk.X, tmp)
+
+	c = FP256BN.Fexp(c)
+	d = FP256BN.Fexp(d)
+
+	if !c.Equals(d) {
+		return nil, fmt.Errorf("Ate(g2(), cred.C) != Ate(ipk.X, tmp)")
+	}
 
 	return &cred, nil
 }
