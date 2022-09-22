@@ -42,6 +42,7 @@ type Signature struct {
 	S *FP256BN.ECP
 	T *FP256BN.ECP
 	W *FP256BN.ECP
+	E *FP256BN.ECP // todo: remove
 }
 
 func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error) {
@@ -85,8 +86,7 @@ func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error)
 	E := ParseECPFromTPMFmt(&comRsp.E.Point)
 
 	hash := NewHash()
-
-	hash.WriteECP(E, S, W)
+	hash.WriteECP(E, S)
 
 	c2 := hash.SumToBIG()
 
@@ -117,34 +117,39 @@ func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error)
 		T: T,
 		W: W,
 		n: n,
+		E: E, // todo: remove
 	}
 
 	return &signature, nil
 }
 
 func Verify(signature *Signature, ipk *IPK) error {
-	hash := NewHash()
+	// hash := NewHash()
 
 	// S^s
 	tmp1 := FP256BN.NewECP()
 	tmp1.Copy(signature.S)
-	tmp1.Mul(signature.s)
+	tmp1 = tmp1.Mul(signature.s)
 
 	// W ^ c
 	tmp2 := FP256BN.NewECP()
 	tmp2.Copy(signature.W)
-	tmp2.Mul(signature.c)
+	tmp2 = tmp2.Mul(signature.c)
 
 	//  S^s W ^ (-c)
 	tmp1.Sub(tmp2)
 
-	hash.WriteECP(tmp1, signature.S, signature.W)
-
-	cDash := hash.SumToBIG()
-
-	if cDash != signature.c {
-		return fmt.Errorf("c is not match: %v != %v", signature.c, cDash)
+	if !tmp1.Equals(signature.E) {
+		return fmt.Errorf("E not match")
 	}
+
+	// hash.WriteECP(tmp1, signature.S, signature.W)
+
+	// cDash := hash.SumToBIG()
+
+	// if cDash != signature.c {
+	// 	return fmt.Errorf("c is not match: %v != %v", signature.c, cDash)
+	// }
 
 	return nil
 }
