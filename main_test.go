@@ -1,7 +1,6 @@
 package main
 
 import (
-	"miracl/core/FP256BN"
 	"testing"
 )
 
@@ -43,7 +42,9 @@ func TestAll(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 
+	tmp := member
 	member = NewMember(tpm)
+	member.keyHandles = tmp.keyHandles
 
 	cred, err := member.ActivateCredential(encCred, memberSession, &issuer.ipk)
 
@@ -51,11 +52,17 @@ func TestAll(t *testing.T) {
 		t.Fatalf("activate credential: %v", err)
 	}
 
-	if FP256BN.Comp(cred.A.GetX(), issuerSession.cred.A.GetX()) != 0 || FP256BN.Comp(cred.A.GetY(), issuerSession.cred.A.GetY()) != 0 {
-		t.Fatalf("cred not match: %v %v", *cred.A, *issuerSession.cred.A)
+	signature, err := member.Sign(cred, rng)
+
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+
 	}
 
-	if FP256BN.Comp(cred.C.GetX(), issuerSession.cred.C.GetX()) != 0 || FP256BN.Comp(cred.C.GetY(), issuerSession.cred.C.GetY()) != 0 {
-		t.Fatalf("cred not match: %v %v", *cred.C, *issuerSession.cred.C)
+	err = Verify(signature, &issuer.ipk)
+
+	if err != nil {
+		t.Fatalf("verify: %v", err)
+
 	}
 }

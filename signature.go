@@ -54,6 +54,9 @@ func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error)
 	var xBuf [int(FP256BN.MODBYTES)]byte
 	var yBuf [int(FP256BN.MODBYTES)]byte
 
+	S.GetX().ToBytes(xBuf[:])
+	S.GetY().ToBytes(yBuf[:])
+
 	P1 := tpm2.TPMSECCPoint{
 		X: tpm2.TPM2BECCParameter{
 			Buffer: xBuf[:],
@@ -117,4 +120,31 @@ func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error)
 	}
 
 	return &signature, nil
+}
+
+func Verify(signature *Signature, ipk *IPK) error {
+	hash := NewHash()
+
+	// S^s
+	tmp1 := FP256BN.NewECP()
+	tmp1.Copy(signature.S)
+	tmp1.Mul(signature.s)
+
+	// W ^ c
+	tmp2 := FP256BN.NewECP()
+	tmp2.Copy(signature.W)
+	tmp2.Mul(signature.c)
+
+	//  S^s W ^ (-c)
+	tmp1.Sub(tmp2)
+
+	hash.WriteECP(tmp1, signature.S, signature.W)
+
+	cDash := hash.SumToBIG()
+
+	if cDash != signature.c {
+		return fmt.Errorf("c is not match: %v != %v", signature.c, cDash)
+	}
+
+	return nil
 }
