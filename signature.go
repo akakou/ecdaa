@@ -35,14 +35,15 @@ type Credential struct {
 }
 
 type Signature struct {
-	c *FP256BN.BIG
-	n *FP256BN.BIG
-	s *FP256BN.BIG
-	R *FP256BN.ECP
-	S *FP256BN.ECP
-	T *FP256BN.ECP
-	W *FP256BN.ECP
-	E *FP256BN.ECP // todo: remove
+	c  *FP256BN.BIG
+	c2 *FP256BN.BIG
+	n  *FP256BN.BIG
+	s  *FP256BN.BIG
+	R  *FP256BN.ECP
+	S  *FP256BN.ECP
+	T  *FP256BN.ECP
+	W  *FP256BN.ECP
+	E  *FP256BN.ECP
 }
 
 func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error) {
@@ -110,21 +111,22 @@ func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error)
 	c := hash.SumToBIG()
 
 	signature := Signature{
-		c: c,
-		s: s1,
-		R: R,
-		S: S,
-		T: T,
-		W: W,
-		n: n,
-		E: E, // todo: remove
+		c:  c,
+		s:  s1,
+		R:  R,
+		S:  S,
+		T:  T,
+		W:  W,
+		n:  n,
+		c2: c2,
+		E:  E,
 	}
 
 	return &signature, nil
 }
 
 func Verify(signature *Signature, ipk *IPK) error {
-	// hash := NewHash()
+	hash := NewHash()
 
 	// S^s
 	tmp1 := FP256BN.NewECP()
@@ -138,18 +140,37 @@ func Verify(signature *Signature, ipk *IPK) error {
 
 	//  S^s W ^ (-c)
 	tmp1.Sub(tmp2)
+	hash.WriteECP(tmp1, signature.S)
 
-	if !tmp1.Equals(signature.E) {
-		return fmt.Errorf("E not match")
+	cDash := hash.SumToBIG()
+
+	if FP256BN.Comp(signature.c2, cDash) != 0 {
+		return fmt.Errorf("c is not match: %v != %v", signature.c, cDash)
 	}
 
-	// hash.WriteECP(tmp1, signature.S, signature.W)
+	a := FP256BN.Ate(ipk.Y, signature.R)
+	b := FP256BN.Ate(g2(), signature.S)
 
-	// cDash := hash.SumToBIG()
+	a = FP256BN.Fexp(a)
+	b = FP256BN.Fexp(b)
 
-	// if cDash != signature.c {
-	// 	return fmt.Errorf("c is not match: %v != %v", signature.c, cDash)
-	// }
+	if !a.Equals(b) {
+		return fmt.Errorf("Ate(ipk.Y, signature.R) != Ate(g2(), signature.S)")
+	}
+
+	tpm3 := FP256BN.NewECP()
+	tpm3.Copy(signature.R)
+	tpm3.Add(signature.W)
+
+	c := FP256BN.Ate(g2(), signature.T)
+	d := FP256BN.Ate(ipk.X, tpm3)
+
+	c = FP256BN.Fexp(c)
+	d = FP256BN.Fexp(d)
+
+	if !c.Equals(d) {
+		return fmt.Errorf("Ate(g2(), signature.T) != Ate(ipk.X, tpm3)")
+	}
 
 	return nil
 }
