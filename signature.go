@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
@@ -46,7 +47,21 @@ type Signature struct {
 	E  *FP256BN.ECP
 }
 
-func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error) {
+func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*Signature, error) {
+	hash := NewHash()
+	hash.WriteBytes(basename)
+
+	B, i, err := hash.HashToECP()
+
+	if err != nil {
+		return nil, err
+	}
+
+	numBuf := make([]byte, binary.MaxVarintLen32)
+	binary.PutVarint(numBuf, int64(i))
+
+	s2Buf := append(numBuf, basename[:]...)
+
 	l := FP256BN.Random(rng)
 	R := cred.A.Mul(l)
 	S := cred.B.Mul(l)
@@ -56,8 +71,8 @@ func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error)
 	var xBuf [int(FP256BN.MODBYTES)]byte
 	var yBuf [int(FP256BN.MODBYTES)]byte
 
-	S.GetX().ToBytes(xBuf[:])
-	S.GetY().ToBytes(yBuf[:])
+	B.GetX().ToBytes(xBuf[:])
+	B.GetY().ToBytes(yBuf[:])
 
 	P1 := tpm2.TPMSECCPoint{
 		X: tpm2.TPM2BECCParameter{
@@ -69,11 +84,11 @@ func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error)
 	}
 
 	S2 := tpm2.TPM2BSensitiveData{
-		Buffer: []byte{},
+		Buffer: s2Buf,
 	}
 
 	Y2 := tpm2.TPM2BECCParameter{
-		Buffer: []byte{},
+		Buffer: yBuf[:],
 	}
 
 	/* run commit and get U */
@@ -86,7 +101,7 @@ func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error)
 	// get result (U)
 	E := ParseECPFromTPMFmt(&comRsp.E.Point)
 
-	hash := NewHash()
+	hash = NewHash()
 	hash.WriteECP(E, S)
 
 	c2 := hash.SumToBIG()
@@ -125,12 +140,21 @@ func (member *Member) Sign(cred *Credential, rng *core.RAND) (*Signature, error)
 	return &signature, nil
 }
 
-func Verify(signature *Signature, ipk *IPK) error {
+func Verify(basename []byte, signature *Signature, ipk *IPK) error {
 	hash := NewHash()
+	hash.WriteBytes(basename)
 
-	// S^s
+	B, _, err := hash.HashToECP()
+
+	if err != nil {
+		return err
+	}
+
+	hash = NewHash()
+
+	// B^s
 	tmp1 := FP256BN.NewECP()
-	tmp1.Copy(signature.S)
+	tmp1.Copy(B)
 	tmp1 = tmp1.Mul(signature.s)
 
 	// W ^ c

@@ -52,14 +52,14 @@ func TestAll(t *testing.T) {
 		t.Fatalf("activate credential: %v", err)
 	}
 
-	signature, err := member.Sign(cred, rng)
+	signature, err := member.Sign([]byte("hoge"), cred, rng)
 
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 
 	}
 
-	err = Verify(signature, &issuer.ipk)
+	err = Verify([]byte("hoge"), signature, &issuer.ipk)
 
 	if err != nil {
 		t.Fatalf("verify: %v", err)
