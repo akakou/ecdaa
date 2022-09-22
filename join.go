@@ -181,6 +181,14 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	session.ekHandle = ekHandle
 	session.srkHandle = srkHandle
 
+	keyHandles := KeyHandles{
+		ekHandle:  ekHandle,
+		srkHandle: srkHandle,
+		handle:    handle,
+	}
+
+	member.keyHandles = &keyHandles
+
 	// todo: remove
 	req.ekHandle = ekHandle
 	req.srkName = string(srkHandle.Name.Buffer)
