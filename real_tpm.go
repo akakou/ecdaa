@@ -10,6 +10,16 @@ import (
 
 var password = []byte("hello")
 
+func ekPolicy(t transport.TPM, handle tpm2.TPMISHPolicy, nonceTPM tpm2.TPM2BNonce) error {
+	cmd := tpm2.PolicySecret{
+		AuthHandle:    tpm2.TPMRHEndorsement,
+		PolicySession: handle,
+		NonceTPM:      nonceTPM,
+	}
+	_, err := cmd.Execute(t)
+	return err
+}
+
 type RealTPM struct {
 	tpm transport.TPMCloser
 }
@@ -29,7 +39,7 @@ func publicParams() PublicParams {
 			FixedTPM:            true,
 			FixedParent:         true,
 			SensitiveDataOrigin: true,
-			UserWithAuth:        true,
+			UserWithAuth:        false,
 			Decrypt:             true,
 			Restricted:          true,
 		},
@@ -61,6 +71,7 @@ func publicParams() PublicParams {
 			UserWithAuth:        true,
 			SensitiveDataOrigin: true,
 			SignEncrypt:         true,
+			AdminWithPolicy:     true,
 		},
 		Parameters: tpm2.TPMUPublicParms{
 			ECCDetail: &tpm2.TPMSECCParms{
@@ -109,11 +120,40 @@ func (tpm *RealTPM) Close() {
 	tpm.tpm.Close()
 }
 
-func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
+func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHandle, *tpm2.TPM2BPublic, error) {
 	params := publicParams()
 	auth := tpm2.PasswordAuth(password)
 
-	primary := tpm2.CreatePrimary{
+	ekCreate := tpm2.CreatePrimary{
+		PrimaryHandle: tpm2.TPMRHEndorsement,
+		InPublic: tpm2.TPM2BPublic{
+			PublicArea: tpm2.RSAEKTemplate,
+		},
+	}
+
+	ekCreateRsp, err := ekCreate.Execute(tpm.tpm)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("create ek: %v", err)
+	}
+
+	srkCreate := tpm2.CreatePrimary{
+		PrimaryHandle: tpm2.TPMRHOwner,
+		InPublic: tpm2.TPM2BPublic{
+			PublicArea: tpm2.ECCSRKTemplate,
+		},
+	}
+
+	srkCreateRsp, err := srkCreate.Execute(tpm.tpm)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("create SRK: %v", err)
+	}
+
+	srkHandle := tpm2.NamedHandle{
+		Handle: srkCreateRsp.ObjectHandle,
+		Name:   srkCreateRsp.Name,
+	}
+
+	create := tpm2.CreatePrimary{
 		PrimaryHandle: tpm2.TPMRHOwner,
 		InSensitive: tpm2.TPM2BSensitiveCreate{
 			Sensitive: tpm2.TPMSSensitiveCreate{
@@ -123,70 +163,57 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 			},
 		},
 		InPublic: tpm2.TPM2BPublic{
-			PublicArea: params.primary,
-		},
-	}
-
-	rspCP, err := primary.Execute(tpm.tpm)
-	if err != nil {
-		return nil, nil, fmt.Errorf("create primary: %v", err)
-	}
-
-	create := tpm2.Create{
-		ParentHandle: tpm2.AuthHandle{
-			Handle: rspCP.ObjectHandle,
-			Name:   rspCP.Name,
-			Auth:   auth,
-		},
-
-		InSensitive: tpm2.TPM2BSensitiveCreate{
-			Sensitive: tpm2.TPMSSensitiveCreate{
-				UserAuth: tpm2.TPM2BAuth{
-					Buffer: password,
-				},
-			},
-		},
-
-		InPublic: tpm2.TPM2BPublic{
 			PublicArea: params.key,
 		},
 	}
 
+	ekHandle := tpm2.AuthHandle{
+		Handle: ekCreateRsp.ObjectHandle,
+		Name:   ekCreateRsp.Name,
+		Auth:   tpm2.Policy(tpm2.TPMAlgSHA256, 16, ekPolicy),
+	}
+
 	rspC, err := create.Execute(tpm.tpm)
 	if err != nil {
-		return nil, nil, fmt.Errorf("create: %v", err)
-	}
-
-	load := tpm2.Load{
-		ParentHandle: tpm2.AuthHandle{
-			Handle: rspCP.ObjectHandle,
-			Name:   rspCP.Name,
-			Auth:   auth,
-		},
-		InPrivate: rspC.OutPrivate,
-		InPublic:  rspC.OutPublic,
-	}
-
-	rspL, err := load.Execute(tpm.tpm)
-	if err != nil {
-		return nil, nil, fmt.Errorf("load: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("create: %v", err)
 	}
 
 	handle := tpm2.AuthHandle{
-		Handle: rspL.ObjectHandle,
-		Name:   rspL.Name,
+		Handle: rspC.ObjectHandle,
+		Name:   rspC.Name,
 		Auth:   auth,
 	}
 
-	return &handle, &rspC.OutPublic, nil
+	return &handle, &ekHandle, &srkHandle, &rspC.OutPublic, nil
+}
+
+func (tpm *RealTPM) ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, wrapSymmetric, encSeed []byte) ([]byte, error) {
+	ac := tpm2.ActivateCredential{
+		ActivateHandle: *srkHandle,
+		KeyHandle:      *ekHandle,
+		CredentialBlob: tpm2.TPM2BIDObject{
+			Buffer: wrapSymmetric,
+		},
+		Secret: tpm2.TPM2BEncryptedSecret{
+			Buffer: encSeed,
+		},
+	}
+
+	acRsp, err := ac.Execute(tpm.tpm)
+	if err != nil {
+		return nil, fmt.Errorf("activate credential: %v", err)
+	}
+
+	return acRsp.CertInfo.Buffer, nil
 }
 
 func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
 	// TODO: rspRP.NVPublic.NVPublic.DataSize may be wrong or required to process.
 	// Because we don't know how to fix it now, we remove data based on fixed value.
-	removeLen := 825
+	// removeLen := 825
+	removeLen := 431
 
-	certIndex := 0x1C0000A
+	certIndex := 0x01C00002
 	nvIndex := tpm2.TPMHandle(certIndex)
 
 	result := []byte{}
@@ -222,7 +249,6 @@ func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
 		}
 
 		result = append(result, rspNV.Data.Buffer...)
-
 	}
 
 	cert, err := x509.ParseCertificate(result)

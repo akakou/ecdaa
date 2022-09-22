@@ -1,12 +1,11 @@
 package main
 
 import (
+	"crypto/x509"
 	"encoding/binary"
 	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
-
-	"github.com/google/certificate-transparency-go/x509"
 
 	"github.com/google/go-tpm/tpm2"
 )
@@ -18,22 +17,40 @@ type JoinSeeds struct {
 }
 
 type JoinRequest struct {
-	public *tpm2.TPM2BPublic
-	cert   *x509.Certificate
-	c1     *FP256BN.BIG
-	s1     *FP256BN.BIG
-	n      *FP256BN.BIG
-	Q      *FP256BN.ECP
+	public   *tpm2.TPM2BPublic
+	cert     *x509.Certificate
+	c1       *FP256BN.BIG
+	s1       *FP256BN.BIG
+	n        *FP256BN.BIG
+	Q        *FP256BN.ECP
+	ekHandle *tpm2.AuthHandle // not good
+	srkName  string           // not good
+}
+
+type EncCred struct {
+	wrapSymmetric []byte
+	encSeed       []byte
+	encA          []byte
+	encC          []byte
 }
 
 type IssuerJoinSession struct {
+	// B *FP256BN.ECP
+	cred Credential
+}
+
+type MemberSession struct {
 	B *FP256BN.ECP
+	D *FP256BN.ECP
+
+	srkHandle *tpm2.NamedHandle
+	ekHandle  *tpm2.AuthHandle
 }
 
 /**
  * Step1. generate seed for join (by Issuer)
  */
-func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession, error) {
+func (_ *Issuer) GenSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession, error) {
 	var seed JoinSeeds
 	var session IssuerJoinSession
 	var basenameBuf [int(FP256BN.MODBYTES)]byte
@@ -59,7 +76,7 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession,
 	seed.s2 = s2Buf
 	seed.y2 = B.GetY()
 
-	session.B = B
+	session.cred.B = B
 
 	return &seed, &session, nil
 }
@@ -67,13 +84,15 @@ func (_ *Issuer) genSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession,
 /**
  * Step2. generate request for join (by Member)
  */
-func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, error) {
+func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequest, *MemberSession, error) {
 	var req JoinRequest
+	var session MemberSession
+
 	/* create key and get public key */
-	handle, _, err := (*member.tpm).CreateKey()
+	handle, ekHandle, srkHandle, _, err := (*member.tpm).CreateKey()
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var xBuf [int(FP256BN.MODBYTES)]byte
@@ -111,7 +130,7 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	comRsp, err := (*member.tpm).Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
-		return nil, fmt.Errorf("commit error: %v\n", err)
+		return nil, nil, fmt.Errorf("commit error: %v\n", err)
 	}
 
 	// get result (Q)
@@ -136,7 +155,7 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	sign, err := (*member.tpm).Sign(c2Bytes[:], comRsp.Counter, handle)
 
 	if err != nil {
-		return nil, fmt.Errorf("sign error: %v\n", err)
+		return nil, nil, fmt.Errorf("sign error: %v\n", err)
 	}
 
 	s1 := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureS.Buffer)
@@ -154,15 +173,28 @@ func (member *Member) genReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	// todo: remove
 	req.Q = Q
+	req.cert, err = (*member.tpm).ReadEKCert()
 
-	return &req, nil
+	session.B = B
+	session.D = Q
+
+	session.ekHandle = ekHandle
+	session.srkHandle = srkHandle
+
+	// todo: remove
+	req.ekHandle = ekHandle
+	req.srkName = string(srkHandle.Name.Buffer)
+
+	return &req, &session, nil
 }
 
 /**
  * Step3. make credential for join (by Issuer)
  */
-func (_ *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*JoinRequest, error) {
-	B := session.B
+func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*EncCred, error) {
+	var encCred EncCred
+
+	B := session.cred.B
 	Q := req.Q
 
 	U1 := B.Mul(req.s1)
@@ -187,14 +219,109 @@ func (_ *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *cor
 		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", c1.ToString(), req.c1.ToString())
 	}
 
-	return req, nil
+	var cred Credential
+
+	invY := FP256BN.NewBIGcopy(issuer.isk.y)
+	invY.Invmodp(p())
+
+	cred.A = B.Mul(invY)
+
+	cred.B = B
+	cred.C = FP256BN.NewECP()
+	cred.C.Copy(cred.A)
+	cred.C.Add(Q)
+	cred.C = cred.C.Mul(issuer.isk.x)
+
+	cred.D = Q
+
+	// todo: randomize
+	secret := tpm2.TPM2BDigest{Buffer: []byte("0123456789abcdef")}
+
+	var ABuf, CBuf [int(FP256BN.MODBYTES) + 1]byte
+	cred.A.ToBytes(ABuf[:], true)
+	cred.C.ToBytes(CBuf[:], true)
+
+	var err error
+	encCred.encA, encCred.encC, err = encCredAES(ABuf[:], CBuf[:], secret.Buffer)
+
+	if err != nil {
+		return nil, fmt.Errorf("enc cred: %v", err)
+	}
+
+	tpm, err := OpenRealTPM()
+	defer tpm.Close()
+
+	if err != nil {
+		return nil, err
+	}
+
+	mc := tpm2.MakeCredential{
+		Handle:     req.ekHandle.Handle,
+		Credential: secret,
+		ObjectNamae: tpm2.TPM2BName{
+			Buffer: []byte(req.srkName),
+		},
+	}
+
+	mcRsp, err := mc.Execute(tpm.tpm)
+	if err != nil {
+		return nil, fmt.Errorf("make credential: %v", err)
+	}
+
+	encCred.wrapSymmetric = mcRsp.CredentialBlob.Buffer
+	encCred.encSeed = mcRsp.Secret.Buffer
+
+	session.cred = cred
+
+	return &encCred, nil
 }
 
-// /**
-//  * Step4. activate credential for join with TPM2_activate_credential (by Member)
-//  */
-// func (_ *Member) activate_cred(n FP256BN.BIG, rng *core.RAND) JoinRequest {
-// 	var req JoinRequest
+/**
+ * Step4. activate credential for join with TPM2_activate_credential (by Member)
+ */
+func (member *Member) ActivateCredential(encCred *EncCred, session *MemberSession, ipk *IPK) (*Credential, error) {
+	var cred Credential
+	secret, err := (*member.tpm).ActivateCredential(session.ekHandle, session.srkHandle, encCred.wrapSymmetric, encCred.encSeed)
 
-// 	return req
-// }
+	if err != nil {
+		return nil, err
+	}
+
+	decA, decC, err := decCredAES(encCred.encA, encCred.encC, secret)
+
+	if err != nil {
+		return nil, err
+	}
+
+	cred.A = FP256BN.ECP_fromBytes(decA)
+	cred.C = FP256BN.ECP_fromBytes(decC)
+
+	cred.B = session.B
+	cred.D = session.D
+
+	tmp := FP256BN.NewECP()
+	tmp.Copy(cred.A)
+	tmp.Add(cred.D)
+
+	a := FP256BN.Ate(ipk.Y, cred.A)
+	b := FP256BN.Ate(g2(), cred.B)
+
+	a = FP256BN.Fexp(a)
+	b = FP256BN.Fexp(b)
+
+	if !a.Equals(b) {
+		return nil, fmt.Errorf("Ate(ipk.Y, cred.A) != Ate(g2(), cred.B)")
+	}
+
+	c := FP256BN.Ate(g2(), cred.C)
+	d := FP256BN.Ate(ipk.X, tmp)
+
+	c = FP256BN.Fexp(c)
+	d = FP256BN.Fexp(d)
+
+	if !c.Equals(d) {
+		return nil, fmt.Errorf("Ate(g2(), cred.C) != Ate(ipk.X, tmp)")
+	}
+
+	return &cred, nil
+}

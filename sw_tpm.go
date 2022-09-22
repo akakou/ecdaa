@@ -25,11 +25,11 @@ func NewSWTPM(rng *core.RAND) *SWTPM {
 func (tpm *SWTPM) Close() {
 }
 
-func (tpm *SWTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
+func (tpm *SWTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.TPM2BPublic, error) {
 	tpm.sk = FP256BN.Random(tpm.rng)
 	tpm.sk.Mod(p())
 
-	return nil, nil, nil
+	return nil, nil, nil, nil
 }
 
 func (tpm *SWTPM) ReadEKCert() (*x509.Certificate, error) {
