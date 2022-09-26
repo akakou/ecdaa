@@ -32,13 +32,3 @@ func ParseECPFromTPMFmt(tpmEcc *tpm2.TPMSECCPoint) *FP256BN.ECP {
 
 	return FP256BN.NewECPbigs(x, y)
 }
-
-func ParseECP2FromTPMFmt(tpmEcc *tpm2.TPMSECCPoint) *FP256BN.ECP2 {
-	bigX := FP256BN.FromBytes(tpmEcc.X.Buffer)
-	bigY := FP256BN.FromBytes(tpmEcc.Y.Buffer)
-
-	fpX := FP256BN.NewFP2big(bigX)
-	fpY := FP256BN.NewFP2big(bigY)
-
-	return FP256BN.NewECP2fp2s(fpX, fpY)
-}
