@@ -10,19 +10,19 @@ import (
 )
 
 type Member struct {
-	tpm        *TPM
-	keyHandles *KeyHandles
+	Tpm        *TPM
+	KeyHandles *KeyHandles
 }
 
 type KeyHandles struct {
-	ekHandle  *tpm2.AuthHandle
-	handle    *tpm2.AuthHandle
-	srkHandle *tpm2.NamedHandle
+	EkHandle  *tpm2.AuthHandle
+	SrkHandle *tpm2.NamedHandle
+	Handle    *tpm2.AuthHandle
 }
 
 func NewMember(tpm TPM) Member {
 	var member = Member{
-		tpm: &tpm,
+		Tpm: &tpm,
 	}
 
 	return member
@@ -36,22 +36,22 @@ type Credential struct {
 }
 
 type Signature struct {
-	c  *FP256BN.BIG
-	c2 *FP256BN.BIG
-	n  *FP256BN.BIG
-	s  *FP256BN.BIG
-	R  *FP256BN.ECP
-	S  *FP256BN.ECP
-	T  *FP256BN.ECP
-	W  *FP256BN.ECP
-	E  *FP256BN.ECP
+	C      *FP256BN.BIG
+	C2     *FP256BN.BIG
+	N      *FP256BN.BIG
+	SmallS *FP256BN.BIG
+	R      *FP256BN.ECP
+	S      *FP256BN.ECP
+	T      *FP256BN.ECP
+	W      *FP256BN.ECP
+	E      *FP256BN.ECP
 }
 
 func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*Signature, error) {
-	hash := NewHash()
-	hash.WriteBytes(basename)
+	hash := newHash()
+	hash.writeBytes(basename)
 
-	B, i, err := hash.HashToECP()
+	B, i, err := hash.hashToECP()
 
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	}
 
 	/* run commit and get U */
-	comRsp, err := (*member.tpm).Commit(member.keyHandles.handle, &P1, &S2, &Y2)
+	comRsp, err := (*member.Tpm).Commit(member.KeyHandles.Handle, &P1, &S2, &Y2)
 
 	if err != nil {
 		return nil, fmt.Errorf("commit error: %v\n", err)
@@ -101,16 +101,16 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	// get result (U)
 	E := ParseECPFromTPMFmt(&comRsp.E.Point)
 
-	hash = NewHash()
-	hash.WriteECP(E, S)
+	hash = newHash()
+	hash.writeECP(E, S)
 
-	c2 := hash.SumToBIG()
+	c2 := hash.sumToBIG()
 
 	/* sign and get s1, n */
 	var c2Bytes [32]byte
 	c2.ToBytes(c2Bytes[:])
 
-	sign, err := (*member.tpm).Sign(c2Bytes[:], comRsp.Counter, member.keyHandles.handle)
+	sign, err := (*member.Tpm).Sign(c2Bytes[:], comRsp.Counter, member.KeyHandles.Handle)
 
 	if err != nil {
 		return nil, fmt.Errorf("sign error: %v\n", err)
@@ -120,56 +120,56 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
 
 	/* calc hash c1 = H( n | c2 ) */
-	hash = NewHash()
-	hash.WriteBIG(n)
-	hash.WriteBytes(c2Bytes[:])
-	c := hash.SumToBIG()
+	hash = newHash()
+	hash.writeBIG(n)
+	hash.writeBytes(c2Bytes[:])
+	c := hash.sumToBIG()
 
 	signature := Signature{
-		c:  c,
-		s:  s1,
-		R:  R,
-		S:  S,
-		T:  T,
-		W:  W,
-		n:  n,
-		c2: c2,
-		E:  E,
+		C:      c,
+		SmallS: s1,
+		R:      R,
+		S:      S,
+		T:      T,
+		W:      W,
+		N:      n,
+		C2:     c2,
+		E:      E,
 	}
 
 	return &signature, nil
 }
 
 func Verify(basename []byte, signature *Signature, ipk *IPK) error {
-	hash := NewHash()
-	hash.WriteBytes(basename)
+	hash := newHash()
+	hash.writeBytes(basename)
 
-	B, _, err := hash.HashToECP()
+	B, _, err := hash.hashToECP()
 
 	if err != nil {
 		return err
 	}
 
-	hash = NewHash()
+	hash = newHash()
 
 	// B^s
 	tmp1 := FP256BN.NewECP()
 	tmp1.Copy(B)
-	tmp1 = tmp1.Mul(signature.s)
+	tmp1 = tmp1.Mul(signature.SmallS)
 
 	// W ^ c
 	tmp2 := FP256BN.NewECP()
 	tmp2.Copy(signature.W)
-	tmp2 = tmp2.Mul(signature.c)
+	tmp2 = tmp2.Mul(signature.C)
 
 	//  S^s W ^ (-c)
 	tmp1.Sub(tmp2)
-	hash.WriteECP(tmp1, signature.S)
+	hash.writeECP(tmp1, signature.S)
 
-	cDash := hash.SumToBIG()
+	cDash := hash.sumToBIG()
 
-	if FP256BN.Comp(signature.c2, cDash) != 0 {
-		return fmt.Errorf("c is not match: %v != %v", signature.c, cDash)
+	if FP256BN.Comp(signature.C2, cDash) != 0 {
+		return fmt.Errorf("c is not match: %v != %v", signature.C, cDash)
 	}
 
 	a := FP256BN.Ate(ipk.Y, signature.R)

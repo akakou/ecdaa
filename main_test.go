@@ -14,7 +14,7 @@ func TestAll(t *testing.T) {
 
 	issuer := RandomIssuer(rng)
 
-	err = VerifyIPK(&issuer.ipk)
+	err = VerifyIPK(&issuer.Ipk)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -44,9 +44,9 @@ func TestAll(t *testing.T) {
 
 	tmp := member
 	member = NewMember(tpm)
-	member.keyHandles = tmp.keyHandles
+	member.KeyHandles = tmp.KeyHandles
 
-	cred, err := member.ActivateCredential(encCred, memberSession, &issuer.ipk)
+	cred, err := member.ActivateCredential(encCred, memberSession, &issuer.Ipk)
 
 	if err != nil {
 		t.Fatalf("activate credential: %v", err)
@@ -59,7 +59,7 @@ func TestAll(t *testing.T) {
 
 	}
 
-	err = Verify([]byte("hoge"), signature, &issuer.ipk)
+	err = Verify([]byte("hoge"), signature, &issuer.Ipk)
 
 	if err != nil {
 		t.Fatalf("verify: %v", err)

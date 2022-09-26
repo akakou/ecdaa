@@ -9,7 +9,7 @@ func TestNewIssuer(t *testing.T) {
 
 	issuer := RandomIssuer(rng)
 
-	err := VerifyIPK(&issuer.ipk)
+	err := VerifyIPK(&issuer.Ipk)
 
 	if err != nil {
 		t.Fatalf("%v", err)
