@@ -106,18 +106,15 @@ func VerifyIPK(ipk *IPK) error {
 	sX := ipk.sX
 	sY := ipk.sY
 
-	// calc minus c = -c
-	minusC := FP256BN.Modneg(c, p())
-
-	// calc Ux = g2^s_x * X^{-c}
+	// calc U_x = g2^s_x * X^{-c}
 	Ux := g2().Mul(sX)
-	tmp := X.Mul(minusC)
-	Ux.Add(tmp)
+	tmp := X.Mul(c)
+	Ux.Sub(tmp)
 
-	// calc Uy = g2^s_y * Y^{-c}
+	// calc U_y = g2^s_y * Y^{-c}
 	Uy := g2().Mul(sY)
-	tmp = Y.Mul(minusC)
-	Uy.Add(tmp)
+	tmp = Y.Mul(c)
+	Uy.Sub(tmp)
 
 	// calc `c' = H(U_x | U_y | g2 | X | Y)`
 	hash := NewHash()
