@@ -32,6 +32,7 @@ type CredCipher struct {
 	EncSeed       []byte
 	EncA          []byte
 	EncC          []byte
+	IV            []byte
 }
 
 type IssuerJoinSession struct {
@@ -242,15 +243,23 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 
 	cred.D = Q
 
-	// todo: randomize
-	secret := tpm2.TPM2BDigest{Buffer: []byte("0123456789abcdef")}
+	var secretBuf [FP256BN.MODBYTES]byte
+	secretBig := FP256BN.Random(rng)
+	secretBig.ToBytes(secretBuf[:])
+
+	secret := tpm2.TPM2BDigest{Buffer: secretBuf[:16][:]}
+
+	var ivLong [FP256BN.MODBYTES]byte
+	ivBig := FP256BN.Random(rng)
+	ivBig.ToBytes(ivLong[:])
+	iv := ivLong[:16]
 
 	var ABuf, CBuf [int(FP256BN.MODBYTES) + 1]byte
 	cred.A.ToBytes(ABuf[:], true)
 	cred.C.ToBytes(CBuf[:], true)
 
 	var err error
-	encCred.EncA, encCred.EncC, err = encCredAES(ABuf[:], CBuf[:], secret.Buffer)
+	encCred.EncA, encCred.EncC, err = encCredAES(ABuf[:], CBuf[:], secret.Buffer, iv[:])
 
 	if err != nil {
 		return nil, fmt.Errorf("enc cred: %v", err)
@@ -278,6 +287,7 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 
 	encCred.WrapSymmetric = mcRsp.CredentialBlob.Buffer
 	encCred.EncSeed = mcRsp.Secret.Buffer
+	encCred.IV = iv[:]
 
 	session.cred = cred
 
@@ -295,7 +305,7 @@ func (member *Member) ActivateCredential(encCred *CredCipher, session *MemberSes
 		return nil, err
 	}
 
-	decA, decC, err := decCredAES(encCred.EncA, encCred.EncC, secret)
+	decA, decC, err := decCredAES(encCred.EncA, encCred.EncC, secret, encCred.IV)
 
 	if err != nil {
 		return nil, err
