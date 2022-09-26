@@ -217,13 +217,7 @@ func (tpm *RealTPM) ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm
 }
 
 func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
-	// TODO: rspRP.NVPublic.NVPublic.DataSize may be wrong or required to process.
-	// Because we don't know how to fix it now, we remove data based on fixed value.
-	// removeLen := 825
-	removeLen := 431
-
-	certIndex := 0x01C00002
-	nvIndex := tpm2.TPMHandle(certIndex)
+	nvIndex := tpm2.TPMHandle(EK_CERT_INDEX)
 
 	result := []byte{}
 
@@ -237,7 +231,7 @@ func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
 		return nil, fmt.Errorf("read public: %w", err)
 	}
 
-	for i := 0; i < int(rspRP.NVPublic.NVPublic.DataSize)-removeLen; i++ {
+	for i := 0; i < int(rspRP.NVPublic.NVPublic.DataSize); i++ {
 		read := tpm2.NVRead{
 			AuthHandle: tpm2.NamedHandle{
 				Handle: rspRP.NVPublic.NVPublic.NVIndex,
@@ -258,6 +252,20 @@ func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
 		}
 
 		result = append(result, rspNV.Data.Buffer...)
+	}
+
+	// TODO: rspRP.NVPublic.NVPublic.DataSize may be wrong or required to process.
+	// Because we don't know how to fix it now, we remove data based on fixed value.
+	resultSize := 0
+
+	for {
+		resultSize = len(result)
+
+		if result[resultSize-1] == 255 && resultSize != 0 {
+			result = result[:resultSize-1]
+		} else {
+			break
+		}
 	}
 
 	cert, err := x509.ParseCertificate(result)

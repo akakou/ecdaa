@@ -30,3 +30,5 @@ func g1() *FP256BN.ECP {
 func g2() *FP256BN.ECP2 {
 	return FP256BN.ECP2_generator()
 }
+
+const EK_CERT_INDEX = 0x01C00002
