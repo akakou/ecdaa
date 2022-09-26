@@ -26,9 +26,27 @@ func InitRandom() *core.RAND {
 	return rng
 }
 
-func ParseECPFromTPMFmt(tpmEcc *tpm2.TPMSECCPoint) *FP256BN.ECP {
+func parseECPFromTPMFmt(tpmEcc *tpm2.TPMSECCPoint) *FP256BN.ECP {
 	x := FP256BN.FromBytes(tpmEcc.X.Buffer)
 	y := FP256BN.FromBytes(tpmEcc.Y.Buffer)
 
 	return FP256BN.NewECPbigs(x, y)
+}
+
+func bigToBytes(big *FP256BN.BIG) []byte {
+	var buf [FP256BN.MODBYTES]byte
+	big.ToBytes(buf[:])
+	return buf[:]
+}
+
+func randomBytes(rng *core.RAND, size int) []byte {
+	rand := FP256BN.Random(rng)
+	buf := bigToBytes(rand)
+	return buf[:size]
+}
+
+func ecpToBytes(ecp *FP256BN.ECP) []byte {
+	var buf [int(FP256BN.MODBYTES) + 1]byte
+	ecp.ToBytes(buf[:], true)
+	return buf[:]
 }
