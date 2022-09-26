@@ -11,11 +11,11 @@ type Hash struct {
 	B [][]byte
 }
 
-func NewHash() Hash {
+func newHash() Hash {
 	return Hash{}
 }
 
-func (h *Hash) WriteECP(n ...*FP256BN.ECP) {
+func (h *Hash) writeECP(n ...*FP256BN.ECP) {
 	var buf [int(FP256BN.MODBYTES) + 1]byte
 
 	for _, v := range n {
@@ -24,7 +24,7 @@ func (h *Hash) WriteECP(n ...*FP256BN.ECP) {
 	}
 }
 
-func (h *Hash) WriteECP2(n ...*FP256BN.ECP2) {
+func (h *Hash) writeECP2(n ...*FP256BN.ECP2) {
 	var buf [2*int(FP256BN.MODBYTES) + 1]byte
 
 	for _, v := range n {
@@ -33,7 +33,7 @@ func (h *Hash) WriteECP2(n ...*FP256BN.ECP2) {
 	}
 }
 
-func (h *Hash) WriteBIG(n ...*FP256BN.BIG) {
+func (h *Hash) writeBIG(n ...*FP256BN.BIG) {
 	var buf [int(FP256BN.MODBYTES)]byte
 
 	for _, v := range n {
@@ -42,13 +42,13 @@ func (h *Hash) WriteBIG(n ...*FP256BN.BIG) {
 	}
 }
 
-func (h *Hash) WriteBytes(n ...[]byte) {
+func (h *Hash) writeBytes(n ...[]byte) {
 	for _, v := range n {
 		h.B = append(h.B, v)
 	}
 }
 
-func (h *Hash) SumToBytes() []byte {
+func (h *Hash) sumToBytes() []byte {
 	hash := sha256.New()
 
 	for _, v := range h.B {
@@ -59,21 +59,21 @@ func (h *Hash) SumToBytes() []byte {
 	return retHash
 }
 
-func (h *Hash) SumToBIG() *FP256BN.BIG {
-	retHash := h.SumToBytes()
+func (h *Hash) sumToBIG() *FP256BN.BIG {
+	retHash := h.sumToBytes()
 	resBIG := FP256BN.FromBytes(retHash)
 	resBIG.Mod(p())
 
 	return resBIG
 }
 
-func (baseHash *Hash) HashToECP() (*FP256BN.ECP, uint32, error) {
+func (baseHash *Hash) hashToECP() (*FP256BN.ECP, uint32, error) {
 	var i uint32
 
 	base := baseHash.B
 
 	for i = 0; i <= 232; i++ {
-		hash := NewHash()
+		hash := newHash()
 		// This process corresponds to BigNumberToB.
 		// Compute BigNumberToB(i,4) on FIDO's spec indicated
 		// that it should continue to find the number which
@@ -83,7 +83,7 @@ func (baseHash *Hash) HashToECP() (*FP256BN.ECP, uint32, error) {
 
 		hash.B = append([][]byte{numBuf}, base...)
 
-		x := hash.SumToBIG()
+		x := hash.sumToBIG()
 
 		ecp := FP256BN.NewECPbig(x)
 		ecp = ecp.Mul(FP256BN.NewBIGint(FP256BN.CURVE_Cof_I))

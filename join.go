@@ -11,27 +11,27 @@ import (
 )
 
 type JoinSeeds struct {
-	basename []byte
-	s2       []byte
-	y2       *FP256BN.BIG
+	Basename []byte
+	S2       []byte
+	Y2       *FP256BN.BIG
 }
 
 type JoinRequest struct {
-	public   *tpm2.TPM2BPublic
-	cert     *x509.Certificate
-	c1       *FP256BN.BIG
-	s1       *FP256BN.BIG
-	n        *FP256BN.BIG
+	Public   *tpm2.TPM2BPublic
+	Cert     *x509.Certificate
+	C1       *FP256BN.BIG
+	S1       *FP256BN.BIG
+	N        *FP256BN.BIG
 	Q        *FP256BN.ECP
 	ekHandle *tpm2.AuthHandle // not good
 	srkName  string           // not good
 }
 
-type EncCred struct {
-	wrapSymmetric []byte
-	encSeed       []byte
-	encA          []byte
-	encC          []byte
+type CredCipher struct {
+	WrapSymmetric []byte
+	EncSeed       []byte
+	EncA          []byte
+	EncC          []byte
 }
 
 type IssuerJoinSession struct {
@@ -58,10 +58,10 @@ func (_ *Issuer) GenSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession,
 	basename := FP256BN.Random(rng)
 	basename.ToBytes(basenameBuf[:])
 
-	hash := NewHash()
-	hash.WriteBytes(basenameBuf[:])
+	hash := newHash()
+	hash.writeBytes(basenameBuf[:])
 
-	B, i, err := hash.HashToECP()
+	B, i, err := hash.hashToECP()
 
 	if err != nil {
 		return nil, nil, err
@@ -72,9 +72,9 @@ func (_ *Issuer) GenSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession,
 
 	s2Buf := append(numBuf, basenameBuf[:]...)
 
-	seed.basename = basenameBuf[:]
-	seed.s2 = s2Buf
-	seed.y2 = B.GetY()
+	seed.Basename = basenameBuf[:]
+	seed.S2 = s2Buf
+	seed.Y2 = B.GetY()
 
 	session.cred.B = B
 
@@ -89,7 +89,7 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	var session MemberSession
 
 	/* create key and get public key */
-	handle, ekHandle, srkHandle, _, err := (*member.tpm).CreateKey()
+	handle, ekHandle, srkHandle, _, err := (*member.Tpm).CreateKey()
 
 	if err != nil {
 		return nil, nil, err
@@ -99,11 +99,11 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	var yBuf [int(FP256BN.MODBYTES)]byte
 
 	/* set zero buffers to P1 */
-	hash := NewHash()
-	hash.WriteBytes(seeds.s2)
-	bX := hash.SumToBIG()
+	hash := newHash()
+	hash.writeBytes(seeds.S2)
+	bX := hash.sumToBIG()
 
-	B := FP256BN.NewECPbigs(bX, seeds.y2)
+	B := FP256BN.NewECPbigs(bX, seeds.Y2)
 
 	B.GetX().ToBytes(xBuf[:])
 	B.GetY().ToBytes(yBuf[:])
@@ -119,7 +119,7 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 
 	/* set up argument for commit */
 	S2 := tpm2.TPM2BSensitiveData{
-		Buffer: seeds.s2[:],
+		Buffer: seeds.S2[:],
 	}
 
 	Y2 := tpm2.TPM2BECCParameter{
@@ -127,7 +127,7 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	}
 
 	/* run commit and get U1 */
-	comRsp, err := (*member.tpm).Commit(handle, &P1, &S2, &Y2)
+	comRsp, err := (*member.Tpm).Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("commit error: %v\n", err)
@@ -142,17 +142,17 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	U1 := E
 
 	/* calc hash c2 = H( U1 | P1 | Q | m ) */
-	hash = NewHash()
+	hash = newHash()
 
-	hash.WriteECP(U1, B, Q)
+	hash.writeECP(U1, B, Q)
 
-	c2 := hash.SumToBIG()
+	c2 := hash.sumToBIG()
 
 	/* sign and get s1, n */
 	var c2Bytes [32]byte
 	c2.ToBytes(c2Bytes[:])
 
-	sign, err := (*member.tpm).Sign(c2Bytes[:], comRsp.Counter, handle)
+	sign, err := (*member.Tpm).Sign(c2Bytes[:], comRsp.Counter, handle)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("sign error: %v\n", err)
@@ -162,18 +162,18 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
 
 	/* calc hash c1 = H( n | c2 ) */
-	hash = NewHash()
-	hash.WriteBIG(n)
-	hash.WriteBytes(c2Bytes[:])
-	c1 := hash.SumToBIG()
+	hash = newHash()
+	hash.writeBIG(n)
+	hash.writeBytes(c2Bytes[:])
+	c1 := hash.sumToBIG()
 
-	req.s1 = s1
-	req.c1 = c1
-	req.n = n
+	req.S1 = s1
+	req.C1 = c1
+	req.N = n
 
 	// todo: remove
 	req.Q = Q
-	req.cert, err = (*member.tpm).ReadEKCert()
+	req.Cert, err = (*member.Tpm).ReadEKCert()
 
 	session.B = B
 	session.D = Q
@@ -182,12 +182,12 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	session.srkHandle = srkHandle
 
 	keyHandles := KeyHandles{
-		ekHandle:  ekHandle,
-		srkHandle: srkHandle,
-		handle:    handle,
+		EkHandle:  ekHandle,
+		SrkHandle: srkHandle,
+		Handle:    handle,
 	}
 
-	member.keyHandles = &keyHandles
+	member.KeyHandles = &keyHandles
 
 	// todo: remove
 	req.ekHandle = ekHandle
@@ -199,37 +199,37 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 /**
  * Step3. make credential for join (by Issuer)
  */
-func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*EncCred, error) {
-	var encCred EncCred
+func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*CredCipher, error) {
+	var encCred CredCipher
 
 	B := session.cred.B
 	Q := req.Q
 
-	U1 := B.Mul(req.s1)
-	UTmp := Q.Mul(req.c1)
+	U1 := B.Mul(req.S1)
+	UTmp := Q.Mul(req.C1)
 
 	U1.Sub(UTmp)
 	U1.Affine()
 
-	hash := NewHash()
-	hash.WriteECP(U1, B, Q)
-	c2 := hash.SumToBIG()
+	hash := newHash()
+	hash.writeECP(U1, B, Q)
+	c2 := hash.sumToBIG()
 
 	var c2Buf [FP256BN.MODBYTES]byte
 	c2.ToBytes(c2Buf[:])
 
-	hash = NewHash()
-	hash.WriteBIG(req.n)
-	hash.WriteBytes(c2Buf[:])
-	c1 := hash.SumToBIG()
+	hash = newHash()
+	hash.writeBIG(req.N)
+	hash.writeBytes(c2Buf[:])
+	c1 := hash.sumToBIG()
 
-	if FP256BN.Comp(c1, req.c1) != 0 {
-		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", c1.ToString(), req.c1.ToString())
+	if FP256BN.Comp(c1, req.C1) != 0 {
+		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", c1.ToString(), req.C1.ToString())
 	}
 
 	var cred Credential
 
-	invY := FP256BN.NewBIGcopy(issuer.isk.y)
+	invY := FP256BN.NewBIGcopy(issuer.Isk.Y)
 	invY.Invmodp(p())
 
 	cred.A = B.Mul(invY)
@@ -238,7 +238,7 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 	cred.C = FP256BN.NewECP()
 	cred.C.Copy(cred.A)
 	cred.C.Add(Q)
-	cred.C = cred.C.Mul(issuer.isk.x)
+	cred.C = cred.C.Mul(issuer.Isk.X)
 
 	cred.D = Q
 
@@ -250,7 +250,7 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 	cred.C.ToBytes(CBuf[:], true)
 
 	var err error
-	encCred.encA, encCred.encC, err = encCredAES(ABuf[:], CBuf[:], secret.Buffer)
+	encCred.EncA, encCred.EncC, err = encCredAES(ABuf[:], CBuf[:], secret.Buffer)
 
 	if err != nil {
 		return nil, fmt.Errorf("enc cred: %v", err)
@@ -276,8 +276,8 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 		return nil, fmt.Errorf("make credential: %v", err)
 	}
 
-	encCred.wrapSymmetric = mcRsp.CredentialBlob.Buffer
-	encCred.encSeed = mcRsp.Secret.Buffer
+	encCred.WrapSymmetric = mcRsp.CredentialBlob.Buffer
+	encCred.EncSeed = mcRsp.Secret.Buffer
 
 	session.cred = cred
 
@@ -287,15 +287,15 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 /**
  * Step4. activate credential for join with TPM2_activate_credential (by Member)
  */
-func (member *Member) ActivateCredential(encCred *EncCred, session *MemberSession, ipk *IPK) (*Credential, error) {
+func (member *Member) ActivateCredential(encCred *CredCipher, session *MemberSession, ipk *IPK) (*Credential, error) {
 	var cred Credential
-	secret, err := (*member.tpm).ActivateCredential(session.ekHandle, session.srkHandle, encCred.wrapSymmetric, encCred.encSeed)
+	secret, err := (*member.Tpm).ActivateCredential(session.ekHandle, session.srkHandle, encCred.WrapSymmetric, encCred.EncSeed)
 
 	if err != nil {
 		return nil, err
 	}
 
-	decA, decC, err := decCredAES(encCred.encA, encCred.encC, secret)
+	decA, decC, err := decCredAES(encCred.EncA, encCred.EncC, secret)
 
 	if err != nil {
 		return nil, err

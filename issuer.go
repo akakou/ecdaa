@@ -10,8 +10,8 @@ import (
  * ISK: Issuer's Secret Key.
  */
 type ISK struct {
-	x *FP256BN.BIG
-	y *FP256BN.BIG
+	X *FP256BN.BIG
+	Y *FP256BN.BIG
 }
 
 /**
@@ -25,8 +25,8 @@ func RandomISK(rng *core.RAND) ISK {
 	x.Mod(p())
 	y.Mod(p())
 
-	isk.x = x
-	isk.y = y
+	isk.X = x
+	isk.Y = y
 
 	return isk
 }
@@ -37,9 +37,9 @@ func RandomISK(rng *core.RAND) ISK {
 type IPK struct {
 	X  *FP256BN.ECP2
 	Y  *FP256BN.ECP2
-	c  *FP256BN.BIG
-	sX *FP256BN.BIG
-	sY *FP256BN.BIG
+	C  *FP256BN.BIG
+	SX *FP256BN.BIG
+	SY *FP256BN.BIG
 }
 
 /**
@@ -49,8 +49,8 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	// random r_x, r_y
 	var ipk IPK
 
-	x := isk.x
-	y := isk.y
+	x := isk.X
+	y := isk.Y
 
 	rX := FP256BN.Random(rng)
 	rY := FP256BN.Random(rng)
@@ -71,9 +71,9 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	Uy := g2().Mul(rY)
 
 	// calc `c = H(U_x | U_y | g2 | X | Y)`
-	hash := NewHash()
-	hash.WriteECP2(Ux, Uy, g2(), X, Y)
-	c := hash.SumToBIG()
+	hash := newHash()
+	hash.writeECP2(Ux, Uy, g2(), X, Y)
+	c := hash.sumToBIG()
 
 	// calc s_x, s_y
 	//     s_x = r_x + cx
@@ -89,9 +89,9 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	// copy pointers to ipk
 	ipk.X = X
 	ipk.Y = Y
-	ipk.c = c
-	ipk.sX = sX
-	ipk.sY = sY
+	ipk.C = c
+	ipk.SX = sX
+	ipk.SY = sY
 
 	return ipk
 }
@@ -102,9 +102,9 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 func VerifyIPK(ipk *IPK) error {
 	X := ipk.X
 	Y := ipk.Y
-	c := ipk.c
-	sX := ipk.sX
-	sY := ipk.sY
+	c := ipk.C
+	sX := ipk.SX
+	sY := ipk.SY
 
 	// calc U_x = g2^s_x * X^{-c}
 	Ux := g2().Mul(sX)
@@ -117,9 +117,9 @@ func VerifyIPK(ipk *IPK) error {
 	Uy.Sub(tmp)
 
 	// calc `c' = H(U_x | U_y | g2 | X | Y)`
-	hash := NewHash()
-	hash.WriteECP2(Ux, Uy, g2(), X, Y)
-	cDash := hash.SumToBIG()
+	hash := newHash()
+	hash.writeECP2(Ux, Uy, g2(), X, Y)
+	cDash := hash.sumToBIG()
 
 	if FP256BN.Comp(c, cDash) == 0 {
 		return nil
@@ -129,14 +129,14 @@ func VerifyIPK(ipk *IPK) error {
 }
 
 type Issuer struct {
-	ipk IPK
-	isk ISK
+	Ipk IPK
+	Isk ISK
 }
 
 func NewIssuer(isk ISK, ipk IPK) Issuer {
 	var issuer Issuer
-	issuer.isk = isk
-	issuer.ipk = ipk
+	issuer.Isk = isk
+	issuer.Ipk = ipk
 
 	return issuer
 }
