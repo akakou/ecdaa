@@ -45,6 +45,7 @@ type Signature struct {
 	T      *FP256BN.ECP
 	W      *FP256BN.ECP
 	E      *FP256BN.ECP
+	K      *FP256BN.ECP
 }
 
 func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*Signature, error) {
@@ -68,8 +69,8 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	T := cred.C.Mul(l)
 	W := cred.D.Mul(l)
 
-	xBuf := bigToBytes(B.GetX())
-	yBuf := bigToBytes(B.GetY())
+	xBuf := bigToBytes(S.GetX())
+	yBuf := bigToBytes(S.GetY())
 
 	P1 := tpm2.TPMSECCPoint{
 		X: tpm2.TPM2BECCParameter{
@@ -85,7 +86,7 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	}
 
 	Y2 := tpm2.TPM2BECCParameter{
-		Buffer: yBuf,
+		Buffer: bigToBytes(B.GetY()),
 	}
 
 	/* run commit and get U */
@@ -97,9 +98,12 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 
 	// get result (U)
 	E := parseECPFromTPMFmt(&comRsp.E.Point)
+	L := parseECPFromTPMFmt(&comRsp.L.Point)
+	K := parseECPFromTPMFmt(&comRsp.K.Point)
 
 	hash = newHash()
-	hash.writeECP(E, S)
+	hash.writeECP(E, S, L, B, K)
+	hash.writeBytes(basename)
 
 	c2 := hash.sumToBIG()
 
@@ -131,6 +135,7 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 		N:      n,
 		C2:     c2,
 		E:      E,
+		K:      K,
 	}
 
 	return &signature, nil
@@ -150,7 +155,7 @@ func Verify(basename []byte, signature *Signature, ipk *IPK) error {
 
 	// B^s
 	tmp1 := FP256BN.NewECP()
-	tmp1.Copy(B)
+	tmp1.Copy(signature.S)
 	tmp1 = tmp1.Mul(signature.SmallS)
 
 	// W ^ c
@@ -160,7 +165,16 @@ func Verify(basename []byte, signature *Signature, ipk *IPK) error {
 
 	//  S^s W ^ (-c)
 	tmp1.Sub(tmp2)
-	hash.writeECP(tmp1, signature.S)
+
+	// L = s * P2
+	L := B.Mul(signature.SmallS)
+
+	// c * K
+	tmp3 := signature.K.Mul(signature.C)
+	L.Sub(tmp3)
+
+	hash.writeECP(tmp1, signature.S, L, B, signature.K)
+	hash.writeBytes(basename)
 
 	cDash := hash.sumToBIG()
 
