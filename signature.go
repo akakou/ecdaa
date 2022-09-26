@@ -45,6 +45,7 @@ type Signature struct {
 	T      *FP256BN.ECP
 	W      *FP256BN.ECP
 	E      *FP256BN.ECP
+	K      *FP256BN.ECP
 }
 
 func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*Signature, error) {
@@ -97,16 +98,14 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 
 	// get result (U)
 	E := parseECPFromTPMFmt(&comRsp.E.Point)
-	// L := parseECPFromTPMFmt(&comRsp.L.Point)
-	// K := parseECPFromTPMFmt(&comRsp.K.Point)
+	L := parseECPFromTPMFmt(&comRsp.L.Point)
+	K := parseECPFromTPMFmt(&comRsp.K.Point)
 
 	hash = newHash()
-	hash.writeECP(E, S)
+	hash.writeECP(E, S, L, B, K)
+	hash.writeBytes(basename)
 
 	c2 := hash.sumToBIG()
-	hash.writeECP(E, S)
-	// hash.writeECP(E, S, W, L, B, K)
-	// hash.writeBytes(basename)
 
 	/* sign and get s1, n */
 	c2Buf := bigToBytes(c2)
@@ -136,6 +135,7 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 		N:      n,
 		C2:     c2,
 		E:      E,
+		K:      K,
 	}
 
 	return &signature, nil
@@ -145,11 +145,11 @@ func Verify(basename []byte, signature *Signature, ipk *IPK) error {
 	hash := newHash()
 	hash.writeBytes(basename)
 
-	// B, _, err := hash.hashToECP()
+	B, _, err := hash.hashToECP()
 
-	// if err != nil {
-	// 	return err
-	// }
+	if err != nil {
+		return err
+	}
 
 	hash = newHash()
 
@@ -166,12 +166,16 @@ func Verify(basename []byte, signature *Signature, ipk *IPK) error {
 	//  S^s W ^ (-c)
 	tmp1.Sub(tmp2)
 
-	hash = newHash()
-	hash.writeECP(tmp1, signature.S)
-	// hash.writeECP(tmp1, signature.S, signature.W, signature.L, B, signature.K)
-	// hash.writeECP(E, S, W, L, B, K)
+	// L = s * P2
+	L := B.Mul(signature.SmallS)
 
-	// hash.writeECP(tmp1, signature.S)
+	// c * K
+	tmp3 := signature.K.Mul(signature.C)
+	L.Sub(tmp3)
+
+	hash.writeECP(tmp1, signature.S, L, B, signature.K)
+	hash.writeBytes(basename)
+
 	cDash := hash.sumToBIG()
 
 	if FP256BN.Comp(signature.C2, cDash) != 0 {
