@@ -16,11 +16,9 @@ func newHash() Hash {
 }
 
 func (h *Hash) writeECP(n ...*FP256BN.ECP) {
-	var buf [int(FP256BN.MODBYTES) + 1]byte
-
 	for _, v := range n {
-		v.ToBytes(buf[:], true)
-		h.B = append(h.B, buf[:])
+		buf := ecpToBytes(v)
+		h.B = append(h.B, buf)
 	}
 }
 
@@ -34,11 +32,9 @@ func (h *Hash) writeECP2(n ...*FP256BN.ECP2) {
 }
 
 func (h *Hash) writeBIG(n ...*FP256BN.BIG) {
-	var buf [int(FP256BN.MODBYTES)]byte
-
 	for _, v := range n {
-		v.ToBytes(buf[:])
-		h.B = append(h.B, buf[:])
+		buf := bigToBytes(v)
+		h.B = append(h.B, buf)
 	}
 }
 

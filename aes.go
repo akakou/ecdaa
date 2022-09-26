@@ -7,10 +7,8 @@ import (
 	"miracl/core/FP256BN"
 )
 
-func encCredAES(srcA, srcC, secret []byte) ([]byte, []byte, error) {
+func encCredAES(srcA, srcC, secret, iv []byte) ([]byte, []byte, error) {
 	var destA, destC [FP256BN.MODBYTES + 1]byte
-
-	iv := []byte("0123456789abcdef")
 
 	secretCipher, err := aes.NewCipher(secret)
 
@@ -27,10 +25,8 @@ func encCredAES(srcA, srcC, secret []byte) ([]byte, []byte, error) {
 	return destA[:], destC[:], nil
 }
 
-func decCredAES(srcA, srcC, secret []byte) ([]byte, []byte, error) {
+func decCredAES(srcA, srcC, secret, iv []byte) ([]byte, []byte, error) {
 	var destA, destC [FP256BN.MODBYTES + 1]byte
-
-	iv := []byte("0123456789abcdef")
 
 	secretCipher, err := aes.NewCipher(secret)
 

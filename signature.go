@@ -68,18 +68,15 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	T := cred.C.Mul(l)
 	W := cred.D.Mul(l)
 
-	var xBuf [int(FP256BN.MODBYTES)]byte
-	var yBuf [int(FP256BN.MODBYTES)]byte
-
-	B.GetX().ToBytes(xBuf[:])
-	B.GetY().ToBytes(yBuf[:])
+	xBuf := bigToBytes(B.GetX())
+	yBuf := bigToBytes(B.GetY())
 
 	P1 := tpm2.TPMSECCPoint{
 		X: tpm2.TPM2BECCParameter{
-			Buffer: xBuf[:],
+			Buffer: xBuf,
 		},
 		Y: tpm2.TPM2BECCParameter{
-			Buffer: yBuf[:],
+			Buffer: yBuf,
 		},
 	}
 
@@ -88,7 +85,7 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	}
 
 	Y2 := tpm2.TPM2BECCParameter{
-		Buffer: yBuf[:],
+		Buffer: yBuf,
 	}
 
 	/* run commit and get U */
@@ -99,7 +96,7 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	}
 
 	// get result (U)
-	E := ParseECPFromTPMFmt(&comRsp.E.Point)
+	E := parseECPFromTPMFmt(&comRsp.E.Point)
 
 	hash = newHash()
 	hash.writeECP(E, S)
@@ -107,10 +104,9 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	c2 := hash.sumToBIG()
 
 	/* sign and get s1, n */
-	var c2Bytes [32]byte
-	c2.ToBytes(c2Bytes[:])
+	c2Buf := bigToBytes(c2)
 
-	sign, err := (*member.Tpm).Sign(c2Bytes[:], comRsp.Counter, member.KeyHandles.Handle)
+	sign, err := (*member.Tpm).Sign(c2Buf, comRsp.Counter, member.KeyHandles.Handle)
 
 	if err != nil {
 		return nil, fmt.Errorf("sign error: %v\n", err)
@@ -122,7 +118,7 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	/* calc hash c1 = H( n | c2 ) */
 	hash = newHash()
 	hash.writeBIG(n)
-	hash.writeBytes(c2Bytes[:])
+	hash.writeBytes(c2Buf)
 	c := hash.sumToBIG()
 
 	signature := Signature{
