@@ -35,11 +35,11 @@ func RandomISK(rng *core.RAND) ISK {
  * IPL: Issuer's Public Key.
  */
 type IPK struct {
-	X   *FP256BN.ECP2
-	Y   *FP256BN.ECP2
-	c   *FP256BN.BIG
-	s_x *FP256BN.BIG
-	s_y *FP256BN.BIG
+	X  *FP256BN.ECP2
+	Y  *FP256BN.ECP2
+	c  *FP256BN.BIG
+	sX *FP256BN.BIG
+	sY *FP256BN.BIG
 }
 
 /**
@@ -90,8 +90,8 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	ipk.X = X
 	ipk.Y = Y
 	ipk.c = c
-	ipk.s_x = sX
-	ipk.s_y = sY
+	ipk.sX = sX
+	ipk.sY = sY
 
 	return ipk
 }
@@ -103,25 +103,25 @@ func VerifyIPK(ipk *IPK) error {
 	X := ipk.X
 	Y := ipk.Y
 	c := ipk.c
-	sX := ipk.s_x
-	sY := ipk.s_y
+	sX := ipk.sX
+	sY := ipk.sY
 
 	// calc minus c = -c
 	minusC := FP256BN.Modneg(c, p())
 
-	// calc U_x = g2^s_x * X^{-c}
-	U_x := g2().Mul(sX)
+	// calc Ux = g2^s_x * X^{-c}
+	Ux := g2().Mul(sX)
 	tmp := X.Mul(minusC)
-	U_x.Add(tmp)
+	Ux.Add(tmp)
 
-	// calc U_y = g2^s_y * Y^{-c}
-	U_y := g2().Mul(sY)
+	// calc Uy = g2^s_y * Y^{-c}
+	Uy := g2().Mul(sY)
 	tmp = Y.Mul(minusC)
-	U_y.Add(tmp)
+	Uy.Add(tmp)
 
 	// calc `c' = H(U_x | U_y | g2 | X | Y)`
 	hash := NewHash()
-	hash.WriteECP2(U_x, U_y, g2(), X, Y)
+	hash.WriteECP2(Ux, Uy, g2(), X, Y)
 	cDash := hash.SumToBIG()
 
 	if FP256BN.Comp(c, cDash) == 0 {
