@@ -5,6 +5,9 @@ import (
 )
 
 func TestAll(t *testing.T) {
+	message := []byte("hoge")
+	basename := []byte("fuga")
+
 	rng := InitRandom()
 
 	tpm, err := OpenRealTPM()
@@ -52,14 +55,14 @@ func TestAll(t *testing.T) {
 		t.Fatalf("activate credential: %v", err)
 	}
 
-	signature, err := member.Sign([]byte("hoge"), cred, rng)
+	signature, err := member.Sign(message, basename, cred, rng)
 
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 
 	}
 
-	err = Verify([]byte("hoge"), signature, &issuer.Ipk)
+	err = Verify(message, basename, signature, &issuer.Ipk)
 
 	if err != nil {
 		t.Fatalf("verify: %v", err)
