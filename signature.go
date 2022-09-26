@@ -48,7 +48,7 @@ type Signature struct {
 	K      *FP256BN.ECP
 }
 
-func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*Signature, error) {
+func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core.RAND) (*Signature, error) {
 	hash := newHash()
 	hash.writeBytes(basename)
 
@@ -103,7 +103,7 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 
 	hash = newHash()
 	hash.writeECP(E, S, L, B, K)
-	hash.writeBytes(basename)
+	hash.writeBytes(basename, message)
 
 	c2 := hash.sumToBIG()
 
@@ -141,7 +141,7 @@ func (member *Member) Sign(basename []byte, cred *Credential, rng *core.RAND) (*
 	return &signature, nil
 }
 
-func Verify(basename []byte, signature *Signature, ipk *IPK) error {
+func Verify(message, basename []byte, signature *Signature, ipk *IPK) error {
 	hash := newHash()
 	hash.writeBytes(basename)
 
@@ -174,7 +174,7 @@ func Verify(basename []byte, signature *Signature, ipk *IPK) error {
 	L.Sub(tmp3)
 
 	hash.writeECP(tmp1, signature.S, L, B, signature.K)
-	hash.writeBytes(basename)
+	hash.writeBytes(basename, message)
 
 	cDash := hash.sumToBIG()
 
