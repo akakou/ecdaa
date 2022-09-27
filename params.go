@@ -1,4 +1,4 @@
-package main
+package ecdaa
 
 import "miracl/core/FP256BN"
 
