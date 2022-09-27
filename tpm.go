@@ -110,9 +110,9 @@ func publicParams() PublicParams {
 	return params
 }
 
-func OpenRealTPM(password []byte) (*RealTPM, error) {
+func OpenRealTPM(password []byte, path string) (*RealTPM, error) {
 	// thetpm, err := simulator.OpenSimulator()
-	thetpm, err := transport.OpenTPM("/dev/tpm0")
+	thetpm, err := transport.OpenTPM(path)
 
 	if err != nil {
 		return nil, err

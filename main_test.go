@@ -11,7 +11,7 @@ func TestAll(t *testing.T) {
 
 	rng := InitRandom()
 
-	tpm, err := OpenRealTPM(password)
+	tpm, err := OpenRealTPM(password, TPM_PATH)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -41,7 +41,7 @@ func TestAll(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	tpm, err = OpenRealTPM(password)
+	tpm, err = OpenRealTPM(password, TPM_PATH)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
