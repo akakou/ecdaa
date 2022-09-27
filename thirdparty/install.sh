@@ -1,7 +1,7 @@
 ### step1. install go-tpm
 git clone https://github.com/akakou/go-tpm
 cd go-tpm
-git checkout fix-create-ecdaa-key
+git checkout ecdaa
 cd ..
 
 ### step2. install miracl/core
