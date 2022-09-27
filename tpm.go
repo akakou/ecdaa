@@ -6,13 +6,14 @@ import (
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
+	// "github.com/google/go-tpm/tpm2/transport/simulator"
 )
 
 type TPM interface {
 	CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHandle, *tpm2.TPM2BPublic, error)
 	Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error)
 	Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error)
-	ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, wrapSymmetric, encSeed []byte) ([]byte, error)
+	ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, idObject, wrappedCredential []byte) ([]byte, error)
 	ReadEKCert() (*x509.Certificate, error)
 	Close()
 }
@@ -196,16 +197,27 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.Named
 	return &handle, &ekHandle, &srkHandle, &rspC.OutPublic, nil
 }
 
-func (tpm *RealTPM) ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, wrapSymmetric, encSeed []byte) ([]byte, error) {
+func (tpm *RealTPM) ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, idObject, wrappedCredential []byte) ([]byte, error) {
+	var parsedIdObject tpm2.TPM2BIDObject
+	var parsedWrappedCredential tpm2.TPM2BEncryptedSecret
+
+	err := tpm2.Unmarshal(idObject, &parsedIdObject)
+
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal: %v", err)
+	}
+
+	err = tpm2.Unmarshal(wrappedCredential, &parsedWrappedCredential)
+
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal: %v", err)
+	}
+
 	ac := tpm2.ActivateCredential{
 		ActivateHandle: *srkHandle,
 		KeyHandle:      *ekHandle,
-		CredentialBlob: tpm2.TPM2BIDObject{
-			Buffer: wrapSymmetric,
-		},
-		Secret: tpm2.TPM2BEncryptedSecret{
-			Buffer: encSeed,
-		},
+		CredentialBlob: parsedIdObject,
+		Secret:         parsedWrappedCredential,
 	}
 
 	acRsp, err := ac.Execute(tpm.tpm)

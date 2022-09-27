@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/go-tpm/tpm2"
+	legacy "github.com/google/go-tpm/legacy/tpm2"
 )
 
 func TestCreateKey(t *testing.T) {
@@ -54,26 +54,32 @@ func TestActivateCredential(t *testing.T) {
 
 	_, ekHandle, srkHandle, _, _ := tpm.CreateKey()
 
-	secret := tpm2.TPM2BDigest{Buffer: []byte("Secrets!!!")}
+	secret := []byte("0123456789abcdef")
 
-	mc := tpm2.MakeCredential{
-		Handle:      ekHandle.Handle,
-		Credential:  secret,
-		ObjectNamae: srkHandle.Name,
+	aikName := legacy.HashValue{
+		Alg:   legacy.AlgSHA256,
+		Value: srkHandle.Name.Buffer,
 	}
 
-	mcRsp, err := mc.Execute(tpm.tpm)
-	if err != nil {
-		t.Fatalf("could not make credential: %v", err)
-	}
-
-	result, err := tpm.ActivateCredential(ekHandle, srkHandle, mcRsp.CredentialBlob.Buffer, mcRsp.Secret.Buffer)
+	cert, err := tpm.ReadEKCert()
 
 	if err != nil {
-		t.Errorf("%v", err)
+		t.Fatalf("enc cred: %v", err)
 	}
 
-	if !bytes.Equal(result, secret.Buffer) {
-		t.Errorf("want %x got %x", secret.Buffer, result)
+	idObject, wrappedCredential, err := MakeCred(&aikName, cert.PublicKey, 16, secret)
+
+	if err != nil {
+		t.Fatalf("enc cred: %v", err)
+	}
+
+	result, err := tpm.ActivateCredential(ekHandle, srkHandle, idObject, wrappedCredential)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	if !bytes.Equal(result, secret) {
+		t.Fatalf("want %x got %x", secret, result)
 	}
 }

@@ -34,7 +34,7 @@ func TestAll(t *testing.T) {
 	}
 	tpm.Close()
 
-	encCred, err := issuer.MakeCred(req, issuerSession, rng)
+	cipherCred, err := issuer.MakeCred(req, issuerSession, rng)
 
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -49,7 +49,7 @@ func TestAll(t *testing.T) {
 	member = NewMember(tpm)
 	member.KeyHandles = tmp.KeyHandles
 
-	cred, err := member.ActivateCredential(encCred, memberSession, &issuer.Ipk)
+	cred, err := member.ActivateCredential(cipherCred, memberSession, &issuer.Ipk)
 
 	if err != nil {
 		t.Fatalf("activate credential: %v", err)
