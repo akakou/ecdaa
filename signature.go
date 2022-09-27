@@ -20,9 +20,9 @@ type KeyHandles struct {
 	Handle    *tpm2.AuthHandle
 }
 
-func NewMember(tpm TPM) Member {
+func NewMember(tpm *TPM) Member {
 	var member = Member{
-		Tpm: &tpm,
+		Tpm: tpm,
 	}
 
 	return member

@@ -9,15 +9,6 @@ import (
 	// "github.com/google/go-tpm/tpm2/transport/simulator"
 )
 
-type TPM interface {
-	CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHandle, *tpm2.TPM2BPublic, error)
-	Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error)
-	Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error)
-	ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, idObject, wrappedCredential []byte) ([]byte, error)
-	ReadEKCert() (*x509.Certificate, error)
-	Close()
-}
-
 func ekPolicy(t transport.TPM, handle tpm2.TPMISHPolicy, nonceTPM tpm2.TPM2BNonce) error {
 	cmd := tpm2.PolicySecret{
 		AuthHandle:    tpm2.TPMRHEndorsement,
@@ -28,7 +19,7 @@ func ekPolicy(t transport.TPM, handle tpm2.TPMISHPolicy, nonceTPM tpm2.TPM2BNonc
 	return err
 }
 
-type RealTPM struct {
+type TPM struct {
 	tpm      transport.TPMCloser
 	password []byte
 }
@@ -110,7 +101,7 @@ func publicParams() PublicParams {
 	return params
 }
 
-func OpenRealTPM(password []byte, path string) (*RealTPM, error) {
+func OpenTPM(password []byte, path string) (*TPM, error) {
 	// thetpm, err := simulator.OpenSimulator()
 	thetpm, err := transport.OpenTPM(path)
 
@@ -118,7 +109,7 @@ func OpenRealTPM(password []byte, path string) (*RealTPM, error) {
 		return nil, err
 	}
 
-	tpm := RealTPM{
+	tpm := TPM{
 		tpm:      thetpm,
 		password: password,
 	}
@@ -126,11 +117,11 @@ func OpenRealTPM(password []byte, path string) (*RealTPM, error) {
 	return &tpm, nil
 }
 
-func (tpm *RealTPM) Close() {
+func (tpm *TPM) Close() {
 	tpm.tpm.Close()
 }
 
-func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHandle, *tpm2.TPM2BPublic, error) {
+func (tpm *TPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHandle, *tpm2.TPM2BPublic, error) {
 	params := publicParams()
 	auth := tpm2.PasswordAuth(tpm.password)
 
@@ -197,7 +188,7 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.Named
 	return &handle, &ekHandle, &srkHandle, &rspC.OutPublic, nil
 }
 
-func (tpm *RealTPM) ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, idObject, wrappedCredential []byte) ([]byte, error) {
+func (tpm *TPM) ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, idObject, wrappedCredential []byte) ([]byte, error) {
 	var parsedIdObject tpm2.TPM2BIDObject
 	var parsedWrappedCredential tpm2.TPM2BEncryptedSecret
 
@@ -228,7 +219,7 @@ func (tpm *RealTPM) ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm
 	return acRsp.CertInfo.Buffer, nil
 }
 
-func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
+func (tpm *TPM) ReadEKCert() (*x509.Certificate, error) {
 	nvIndex := tpm2.TPMHandle(EK_CERT_INDEX)
 
 	result := []byte{}
@@ -289,7 +280,7 @@ func (tpm *RealTPM) ReadEKCert() (*x509.Certificate, error) {
 	return cert, nil
 }
 
-func (tpm *RealTPM) Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error) {
+func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error) {
 	commit := tpm2.Commit{
 		SignHandle: tpm2.AuthHandle{
 			Handle: handle.Handle,
@@ -311,7 +302,7 @@ func (tpm *RealTPM) Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *t
 	return rspC, nil
 }
 
-func (tpm *RealTPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error) {
+func (tpm *TPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error) {
 	sign := tpm2.Sign{
 		KeyHandle: tpm2.AuthHandle{
 			Handle: handle.Handle,

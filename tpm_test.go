@@ -14,7 +14,7 @@ const TPM_PATH = "/dev/tpm0"
 func TestCreateKey(t *testing.T) {
 	password := []byte("piyo")
 
-	tpm, err := OpenRealTPM(password, TPM_PATH)
+	tpm, err := OpenTPM(password, TPM_PATH)
 	defer tpm.Close()
 
 	if err != nil {
@@ -34,7 +34,7 @@ func TestCreateKey(t *testing.T) {
 func TestReadEKCert(t *testing.T) {
 	password := []byte("hoge")
 
-	tpm, err := OpenRealTPM(password, TPM_PATH)
+	tpm, err := OpenTPM(password, TPM_PATH)
 	defer tpm.Close()
 
 	if err != nil {
@@ -56,7 +56,7 @@ func TestActivateCredential(t *testing.T) {
 	password := []byte("hoge")
 	secret := []byte("0123456789abcdef")
 
-	tpm, err := OpenRealTPM(password, TPM_PATH)
+	tpm, err := OpenTPM(password, TPM_PATH)
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
