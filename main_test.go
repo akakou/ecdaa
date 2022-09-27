@@ -7,10 +7,11 @@ import (
 func TestAll(t *testing.T) {
 	message := []byte("hoge")
 	basename := []byte("fuga")
+	password := []byte("piyo")
 
 	rng := InitRandom()
 
-	tpm, err := OpenRealTPM()
+	tpm, err := OpenRealTPM(password)
 	if err != nil {
 		t.Errorf("%v", err)
 	}
@@ -40,7 +41,7 @@ func TestAll(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	tpm, err = OpenRealTPM()
+	tpm, err = OpenRealTPM(password)
 	if err != nil {
 		t.Errorf("%v", err)
 	}

@@ -10,7 +10,9 @@ import (
 )
 
 func TestCreateKey(t *testing.T) {
-	tpm, err := OpenRealTPM()
+	password := []byte("piyo")
+
+	tpm, err := OpenRealTPM(password)
 	defer tpm.Close()
 
 	if err != nil {
@@ -28,7 +30,9 @@ func TestCreateKey(t *testing.T) {
 }
 
 func TestReadEKCert(t *testing.T) {
-	tpm, err := OpenRealTPM()
+	password := []byte("hoge")
+
+	tpm, err := OpenRealTPM(password)
 	defer tpm.Close()
 
 	if err != nil {
@@ -47,14 +51,15 @@ func TestReadEKCert(t *testing.T) {
 }
 
 func TestActivateCredential(t *testing.T) {
-	tpm, err := OpenRealTPM()
+	password := []byte("hoge")
+	secret := []byte("0123456789abcdef")
+
+	tpm, err := OpenRealTPM(password)
 	if err != nil {
 		t.Fatalf("could not connect to TPM simulator: %v", err)
 	}
 
 	_, ekHandle, srkHandle, _, _ := tpm.CreateKey()
-
-	secret := []byte("0123456789abcdef")
 
 	aikName := legacy.HashValue{
 		Alg:   legacy.AlgSHA256,

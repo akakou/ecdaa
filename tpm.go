@@ -18,8 +18,6 @@ type TPM interface {
 	Close()
 }
 
-var password = []byte("hello")
-
 func ekPolicy(t transport.TPM, handle tpm2.TPMISHPolicy, nonceTPM tpm2.TPM2BNonce) error {
 	cmd := tpm2.PolicySecret{
 		AuthHandle:    tpm2.TPMRHEndorsement,
@@ -31,7 +29,8 @@ func ekPolicy(t transport.TPM, handle tpm2.TPMISHPolicy, nonceTPM tpm2.TPM2BNonc
 }
 
 type RealTPM struct {
-	tpm transport.TPMCloser
+	tpm      transport.TPMCloser
+	password []byte
 }
 
 type PublicParams struct {
@@ -111,7 +110,7 @@ func publicParams() PublicParams {
 	return params
 }
 
-func OpenRealTPM() (*RealTPM, error) {
+func OpenRealTPM(password []byte) (*RealTPM, error) {
 	// thetpm, err := simulator.OpenSimulator()
 	thetpm, err := transport.OpenTPM("/dev/tpm0")
 
@@ -120,7 +119,8 @@ func OpenRealTPM() (*RealTPM, error) {
 	}
 
 	tpm := RealTPM{
-		tpm: thetpm,
+		tpm:      thetpm,
+		password: password,
 	}
 
 	return &tpm, nil
@@ -132,7 +132,7 @@ func (tpm *RealTPM) Close() {
 
 func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHandle, *tpm2.TPM2BPublic, error) {
 	params := publicParams()
-	auth := tpm2.PasswordAuth(password)
+	auth := tpm2.PasswordAuth(tpm.password)
 
 	ekCreate := tpm2.CreatePrimary{
 		PrimaryHandle: tpm2.TPMRHEndorsement,
@@ -168,7 +168,7 @@ func (tpm *RealTPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.Named
 		InSensitive: tpm2.TPM2BSensitiveCreate{
 			Sensitive: tpm2.TPMSSensitiveCreate{
 				UserAuth: tpm2.TPM2BAuth{
-					Buffer: password,
+					Buffer: tpm.password,
 				},
 			},
 		},
@@ -294,7 +294,7 @@ func (tpm *RealTPM) Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *t
 		SignHandle: tpm2.AuthHandle{
 			Handle: handle.Handle,
 			Name:   handle.Name,
-			Auth:   tpm2.PasswordAuth(password),
+			Auth:   tpm2.PasswordAuth(tpm.password),
 		},
 		P1: tpm2.TPM2BECCPoint{
 			Point: *P1,
@@ -316,7 +316,7 @@ func (tpm *RealTPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (
 		KeyHandle: tpm2.AuthHandle{
 			Handle: handle.Handle,
 			Name:   handle.Name,
-			Auth:   tpm2.PasswordAuth(password),
+			Auth:   tpm2.PasswordAuth(tpm.password),
 		},
 		Digest: tpm2.TPM2BDigest{
 			Buffer: digest[:],
