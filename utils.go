@@ -45,6 +45,11 @@ func randomBytes(rng *core.RAND, size int) []byte {
 	return buf[:size]
 }
 
+func randomECP(rng *core.RAND) *FP256BN.ECP {
+	r := randomBytes(rng, int(FP256BN.MODBYTES))
+	return FP256BN.ECP_mapit(r)
+}
+
 func ecpToBytes(ecp *FP256BN.ECP) []byte {
 	var buf [int(FP256BN.MODBYTES) + 1]byte
 	ecp.ToBytes(buf[:], true)
