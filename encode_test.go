@@ -32,3 +32,18 @@ func TestIPKEncodeDecode(t *testing.T) {
 		t.Fatalf("SY is not equal")
 	}
 }
+
+func TestISKEncodeDecode(t *testing.T) {
+	isk := RandomISK(core.NewRAND())
+
+	encoded := isk.Encode()
+	decoded := encoded.Decode()
+
+	if isk.X.ToString() != decoded.X.ToString() {
+		t.Fatalf("X is not equal")
+	}
+
+	if isk.Y.ToString() != decoded.Y.ToString() {
+		t.Fatalf("Y is not equal")
+	}
+}

@@ -2,6 +2,29 @@ package ecdaa
 
 import "miracl/core/FP256BN"
 
+type MiddleEncodedISK struct {
+	X []byte
+	Y []byte
+}
+
+func (isk *ISK) Encode() *MiddleEncodedISK {
+	var encoded MiddleEncodedISK
+
+	encoded.X = bigToBytes(isk.X)
+	encoded.Y = bigToBytes(isk.Y)
+
+	return &encoded
+}
+
+func (encoded *MiddleEncodedISK) Decode() *ISK {
+	var isk ISK
+
+	isk.X = FP256BN.FromBytes(encoded.X)
+	isk.Y = FP256BN.FromBytes(encoded.Y)
+
+	return &isk
+}
+
 type MiddleEncodedIPK struct {
 	X  []byte
 	Y  []byte
