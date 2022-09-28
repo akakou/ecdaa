@@ -7,8 +7,10 @@ import (
 )
 
 func TestIPKEncodeDecode(t *testing.T) {
-	isk := RandomISK(core.NewRAND())
-	ipk := RandomIPK(&isk, core.NewRAND())
+	rnd := core.NewRAND()
+
+	isk := RandomISK(rnd)
+	ipk := RandomIPK(&isk, rnd)
 
 	encoded := ipk.Encode()
 	decoded := encoded.Decode()
@@ -51,10 +53,13 @@ func TestISKEncodeDecode(t *testing.T) {
 
 func TestCredentialEncodeDecode(t *testing.T) {
 	var cred Credential
-	cred.A = randomECP(core.NewRAND())
-	cred.B = randomECP(core.NewRAND())
-	cred.C = randomECP(core.NewRAND())
-	cred.D = randomECP(core.NewRAND())
+
+	rnd := core.NewRAND()
+
+	cred.A = randomECP(rnd)
+	cred.B = randomECP(rnd)
+	cred.C = randomECP(rnd)
+	cred.D = randomECP(rnd)
 
 	encoded := cred.Encode()
 	decoded := encoded.Decode()
@@ -78,17 +83,20 @@ func TestCredentialEncodeDecode(t *testing.T) {
 
 func TestSignatureEncode(t *testing.T) {
 	var signature Signature
-	signature.C = FP256BN.Random(core.NewRAND())
-	signature.C2 = FP256BN.Random(core.NewRAND())
-	signature.N = FP256BN.Random(core.NewRAND())
-	signature.SmallS = FP256BN.Random(core.NewRAND())
 
-	signature.R = randomECP(core.NewRAND())
-	signature.S = randomECP(core.NewRAND())
-	signature.T = randomECP(core.NewRAND())
-	signature.W = randomECP(core.NewRAND())
-	signature.E = randomECP(core.NewRAND())
-	signature.K = randomECP(core.NewRAND())
+	rnd := core.NewRAND()
+
+	signature.C = FP256BN.Random(rnd)
+	signature.C2 = FP256BN.Random(rnd)
+	signature.N = FP256BN.Random(rnd)
+	signature.SmallS = FP256BN.Random(rnd)
+
+	signature.R = randomECP(rnd)
+	signature.S = randomECP(rnd)
+	signature.T = randomECP(rnd)
+	signature.W = randomECP(rnd)
+	signature.E = randomECP(rnd)
+	signature.K = randomECP(rnd)
 
 	encoded := signature.Encode()
 	decoded := encoded.Decode()
