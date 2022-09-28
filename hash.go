@@ -24,9 +24,7 @@ func (h *Hash) writeECP(n ...*FP256BN.ECP) {
 
 func (h *Hash) writeECP2(n ...*FP256BN.ECP2) {
 	for _, v := range n {
-		var buf [2*int(FP256BN.MODBYTES) + 1]byte
-
-		v.ToBytes(buf[:], true)
+		buf := ecp2ToBytes(v)
 		h.B = append(h.B, buf[:])
 	}
 }

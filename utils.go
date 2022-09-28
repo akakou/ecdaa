@@ -50,3 +50,9 @@ func ecpToBytes(ecp *FP256BN.ECP) []byte {
 	ecp.ToBytes(buf[:], true)
 	return buf[:]
 }
+
+func ecp2ToBytes(ecp2 *FP256BN.ECP2) []byte {
+	var buf [2*int(FP256BN.MODBYTES) + 1]byte
+	ecp2.ToBytes(buf[:], true)
+	return buf[:]
+}
