@@ -56,3 +56,33 @@ func (encoded *MiddleEncodedIPK) Decode() *IPK {
 
 	return &decoded
 }
+
+type MiddleEncodedCredential struct {
+	A []byte
+	B []byte
+	C []byte
+	D []byte
+}
+
+func (cred *Credential) Encode() *MiddleEncodedCredential {
+	var encoded MiddleEncodedCredential
+
+	encoded.A = ecpToBytes(cred.A)
+	encoded.B = ecpToBytes(cred.B)
+	encoded.C = ecpToBytes(cred.C)
+	encoded.D = ecpToBytes(cred.D)
+
+	return &encoded
+}
+
+func (encoded *MiddleEncodedCredential) Decode() *Credential {
+	var decoded Credential
+
+	decoded.A = FP256BN.ECP_fromBytes(encoded.A)
+	decoded.B = FP256BN.ECP_fromBytes(encoded.B)
+	decoded.C = FP256BN.ECP_fromBytes(encoded.C)
+	decoded.D = FP256BN.ECP_fromBytes(encoded.D)
+
+	return &decoded
+}
+
