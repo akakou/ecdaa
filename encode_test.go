@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestIPKEncodeDecode(t *testing.T) {
+func TestEncodeDecodeIPK(t *testing.T) {
 	rnd := core.NewRAND()
 
 	isk := RandomISK(rnd)
@@ -36,7 +36,7 @@ func TestIPKEncodeDecode(t *testing.T) {
 	}
 }
 
-func TestISKEncodeDecode(t *testing.T) {
+func TestEncodeDecodeISK(t *testing.T) {
 	isk := RandomISK(core.NewRAND())
 
 	encoded := isk.Encode()
@@ -51,7 +51,7 @@ func TestISKEncodeDecode(t *testing.T) {
 	}
 }
 
-func TestCredentialEncodeDecode(t *testing.T) {
+func TestEncodeDecodeCredential(t *testing.T) {
 	var cred Credential
 
 	rnd := core.NewRAND()
@@ -81,7 +81,7 @@ func TestCredentialEncodeDecode(t *testing.T) {
 	}
 }
 
-func TestSignatureEncode(t *testing.T) {
+func TestEncodeDecodeSignature(t *testing.T) {
 	var signature Signature
 
 	rnd := core.NewRAND()
