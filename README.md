@@ -1,6 +1,6 @@
 # ecdaa
 
-Library(Proof of Concept) of ECDAA with TPM(Trusted Platform Module).
+A library of ECDAA with TPM (Trusted Platform Module).
 
 ECDAA is a privacy-enhancing cryptographic primitive.
 ECDAA prevents tracking but attests that the computer is in some group.
