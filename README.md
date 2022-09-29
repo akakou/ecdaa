@@ -1,6 +1,6 @@
-# ecdaa-go
+# ecdaa
 
-PoC(Proof of Concept) of ECDAA with TPM(Trusted Platform Module).
+Library(Proof of Concept) of ECDAA with TPM(Trusted Platform Module).
 
 ECDAA is a privacy-enhancing cryptographic primitive.
 ECDAA prevents tracking but attests that the computer is in some group.
@@ -12,8 +12,8 @@ This library mainly supports the [FIDO ECDAA](https://fidoalliance.org/specs/fid
 ## Installation
 
 ```sh
-git clone https://github.com/akakou/ecdaa-go
-cd ./ecdaa-go/thirdparty
+git clone https://github.com/akakou/ecdaa
+cd ./ecdaa/thirdparty
 sh ./install.sh
 ```
 
