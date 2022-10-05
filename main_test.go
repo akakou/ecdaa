@@ -15,6 +15,7 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Errorf("%v", err)
 	}
+	defer tpm.Close()
 
 	issuer := RandomIssuer(rng)
 
@@ -33,22 +34,12 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	tpm.Close()
 
 	cipherCred, err := issuer.MakeCred(req, issuerSession, rng)
 
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-
-	tpm, err = OpenTPM(password, TPM_PATH)
-	if err != nil {
-		t.Errorf("%v", err)
-	}
-
-	tmp := member
-	member = NewMember(tpm)
-	member.KeyHandles = tmp.KeyHandles
 
 	cred, err := member.ActivateCredential(cipherCred, memberSession, &issuer.Ipk)
 

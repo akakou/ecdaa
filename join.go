@@ -25,12 +25,12 @@ type JoinRequest struct {
 	S1      *FP256BN.BIG
 	N       *FP256BN.BIG
 	Q       *FP256BN.ECP
-	srkName []byte
+	SrkName []byte
 }
 
 type CredCipher struct {
-	wrappedCredential []byte
-	idObject          []byte
+	WrappedCredential []byte
+	IdObject          []byte
 	EncA              []byte
 	EncC              []byte
 	IV                []byte
@@ -38,15 +38,15 @@ type CredCipher struct {
 
 type IssuerJoinSession struct {
 	// B *FP256BN.ECP
-	cred Credential
+	Cred Credential
 }
 
 type MemberSession struct {
 	B *FP256BN.ECP
 	D *FP256BN.ECP
 
-	srkHandle *tpm2.NamedHandle
-	ekHandle  *tpm2.AuthHandle
+	SrkHandle *tpm2.NamedHandle
+	EkHandle  *tpm2.AuthHandle
 }
 
 /**
@@ -76,7 +76,7 @@ func (_ *Issuer) GenSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession,
 	seed.S2 = s2Buf
 	seed.Y2 = B.GetY()
 
-	session.cred.B = B
+	session.Cred.B = B
 
 	return &seed, &session, nil
 }
@@ -174,8 +174,8 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	session.B = B
 	session.D = Q
 
-	session.ekHandle = ekHandle
-	session.srkHandle = srkHandle
+	session.EkHandle = ekHandle
+	session.SrkHandle = srkHandle
 
 	keyHandles := KeyHandles{
 		EkHandle:  ekHandle,
@@ -186,7 +186,7 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	member.KeyHandles = &keyHandles
 
 	// todo: remove
-	req.srkName = srkHandle.Name.Buffer
+	req.SrkName = srkHandle.Name.Buffer
 
 	return &req, &session, nil
 }
@@ -197,7 +197,7 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*CredCipher, error) {
 	var encCred CredCipher
 
-	B := session.cred.B
+	B := session.Cred.B
 	Q := req.Q
 
 	U1 := B.Mul(req.S1)
@@ -251,19 +251,19 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 
 	aikName := legacy.HashValue{
 		Alg:   legacy.AlgSHA256,
-		Value: req.srkName,
+		Value: req.SrkName,
 	}
 
 	pub := req.EKCert.PublicKey.(*rsa.PublicKey)
 
-	encCred.idObject, encCred.wrappedCredential, err = MakeCred(&aikName, pub, 16, secret)
+	encCred.IdObject, encCred.WrappedCredential, err = MakeCred(&aikName, pub, 16, secret)
 
 	if err != nil {
 		return nil, fmt.Errorf("enc cred: %v", err)
 	}
 	encCred.IV = iv
 
-	session.cred = cred
+	session.Cred = cred
 
 	return &encCred, nil
 }
@@ -273,7 +273,7 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
  */
 func (member *Member) ActivateCredential(encCred *CredCipher, session *MemberSession, ipk *IPK) (*Credential, error) {
 	var cred Credential
-	secret, err := (*member.Tpm).ActivateCredential(session.ekHandle, session.srkHandle, encCred.idObject, encCred.wrappedCredential)
+	secret, err := (*member.Tpm).ActivateCredential(session.EkHandle, session.SrkHandle, encCred.IdObject, encCred.WrappedCredential)
 
 	if err != nil {
 		return nil, err
