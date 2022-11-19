@@ -10,7 +10,7 @@ import (
 )
 
 func TestEncodeDecodeIPK(t *testing.T) {
-	rnd := core.NewRAND()
+	rnd := InitRandom()
 
 	isk := RandomISK(rnd)
 	ipk := RandomIPK(&isk, rnd)
@@ -57,7 +57,7 @@ func TestEncodeDecodeISK(t *testing.T) {
 func TestEncodeDecodeCredential(t *testing.T) {
 	var cred Credential
 
-	rnd := core.NewRAND()
+	rnd := InitRandom()
 
 	cred.A = randomECP(rnd)
 	cred.B = randomECP(rnd)
@@ -87,7 +87,7 @@ func TestEncodeDecodeCredential(t *testing.T) {
 func TestEncodeDecodeSignature(t *testing.T) {
 	var signature Signature
 
-	rnd := core.NewRAND()
+	rnd := InitRandom()
 
 	signature.C = FP256BN.Random(rnd)
 	signature.C2 = FP256BN.Random(rnd)
@@ -148,7 +148,7 @@ func TestEncodeDecodeSignature(t *testing.T) {
 func TestEncodeDecodeJoinSeeds(t *testing.T) {
 	var joinSeeds JoinSeeds
 
-	rnd := core.NewRAND()
+	rnd := InitRandom()
 
 	joinSeeds.Basename = []byte("basename")
 	joinSeeds.S2 = randomBytes(rnd, 32)
@@ -280,5 +280,25 @@ func TestEncodedDecodeCredCipher(t *testing.T) {
 
 	if !bytes.Equal(credCipher.IV, decoded.IV) {
 		t.Fatalf("IV is not equal")
+	}
+}
+
+func TestEncodedDecodeRL(t *testing.T) {
+	var rl RevocationList
+
+	rnd := InitRandom()
+	rand := randomBig(rnd)
+
+	rl = append(rl, rand)
+	rl = append(rl, rand)
+
+	encoded := EncodeRevocationList(rl)
+	decoded := DecodeRevocationList(encoded)
+	reencoded := EncodeRevocationList(decoded)
+
+	for i := 0; i < len(rl); i++ {
+		if !bytes.Equal(encoded[i], reencoded[i]) {
+			t.Fatalf("Encoded/DecodeRL is not equal")
+		}
 	}
 }

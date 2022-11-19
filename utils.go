@@ -39,6 +39,15 @@ func bigToBytes(big *FP256BN.BIG) []byte {
 	return buf[:]
 }
 
+func randomBig(rng *core.RAND) *FP256BN.BIG {
+	rand := FP256BN.Random(rng)
+
+	buf := bigToBytes(rand)
+	big := FP256BN.FromBytes(buf)
+
+	return big
+}
+
 func randomBytes(rng *core.RAND, size int) []byte {
 	rand := FP256BN.Random(rng)
 	buf := bigToBytes(rand)

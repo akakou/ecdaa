@@ -255,3 +255,25 @@ func (encoded *MiddleEncodedCredCipher) Decode() *CredCipher {
 
 	return &decoded
 }
+
+func EncodeRevocationList(list RevocationList) [][]byte {
+	var result [][]byte
+
+	for _, sk := range list {
+		encoded := bigToBytes(sk)
+		result = append(result, encoded)
+	}
+
+	return result
+}
+
+func DecodeRevocationList(list [][]byte) RevocationList {
+	result := RevocationList{}
+
+	for _, sk := range list {
+		decoded := FP256BN.FromBytes(sk)
+		result = append(result, decoded)
+	}
+
+	return result
+}
