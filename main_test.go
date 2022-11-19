@@ -54,7 +54,7 @@ func TestAll(t *testing.T) {
 
 	}
 
-	err = Verify(message, basename, signature, &issuer.Ipk)
+	err = Verify(message, basename, signature, &issuer.Ipk, RevocationList{})
 
 	if err != nil {
 		t.Fatalf("verify: %v", err)

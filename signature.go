@@ -9,6 +9,8 @@ import (
 	"github.com/google/go-tpm/tpm2"
 )
 
+type RevocationList = []*FP256BN.BIG
+
 type Member struct {
 	Tpm        *TPM
 	KeyHandles *KeyHandles
@@ -141,7 +143,7 @@ func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core
 	return &signature, nil
 }
 
-func Verify(message, basename []byte, signature *Signature, ipk *IPK) error {
+func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl RevocationList) error {
 	hash := newHash()
 	hash.writeBytes(basename)
 
@@ -204,6 +206,16 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK) error {
 
 	if !c.Equals(d) {
 		return fmt.Errorf("Ate(g2(), signature.T) != Ate(ipk.X, tpm3)")
+	}
+
+	for _, revoked := range rl {
+		tmp4 := FP256BN.NewECP()
+		tmp4.Copy(signature.S)
+		tmp4 = tmp1.Mul(revoked)
+
+		if signature.W == tmp4 {
+			return fmt.Errorf("the secret key revoked")
+		}
 	}
 
 	return nil
