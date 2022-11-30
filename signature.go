@@ -101,10 +101,9 @@ func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core
 	L := parseECPFromTPMFmt(&comRsp.L.Point)
 	K := parseECPFromTPMFmt(&comRsp.K.Point)
 
-	// c2 = H(E, S, W, L, K, g2, basename, message)
+	// c2 = H(E, S, W, L, B, K,basename, message)
 	hash = newHash()
-	hash.writeECP(E, S, W, L, K)
-	hash.writeECP2(g2())
+	hash.writeECP(E, S, W, L, B, K)
 	hash.writeBytes(basename, message)
 
 	c2 := hash.sumToBIG()
@@ -173,9 +172,8 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 	tmp3 := signature.K.Mul(signature.SmallC)
 	L.Sub(tmp3)
 
-	// c' = H(E, S, W, L, K, g2, basename, message)
-	hash.writeECP(E, signature.S, signature.W, L, signature.K)
-	hash.writeECP2(g2())
+	// c' = H(E, S, W, L, B, K, basename, message)
+	hash.writeECP(E, signature.S, signature.W, L, B, signature.K)
 	hash.writeBytes(basename, message)
 
 	cDash := hash.sumToBIG()
@@ -224,7 +222,7 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 		tmp4.Copy(signature.S)
 		tmp4 = tmp4.Mul(revoked)
 
-		if signature.W == tmp4 {
+		if signature.W.Equals(tmp4) {
 			return fmt.Errorf("the secret key revoked")
 		}
 	}
