@@ -104,7 +104,8 @@ func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core
 	K := parseECPFromTPMFmt(&comRsp.K.Point)
 
 	hash = newHash()
-	hash.writeECP(E, S, L, B, K)
+	hash.writeECP(E, S, W, L, K)
+	hash.writeECP2(g2())
 	hash.writeBytes(basename, message)
 
 	c2 := hash.sumToBIG()
@@ -155,18 +156,18 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 
 	hash = newHash()
 
-	// B^s
-	tmp1 := FP256BN.NewECP()
-	tmp1.Copy(signature.S)
-	tmp1 = tmp1.Mul(signature.SmallS)
+	// E = S^s
+	E := FP256BN.NewECP()
+	E.Copy(signature.S)
+	E = E.Mul(signature.SmallS)
 
-	// W ^ c
+	// E = W ^ c
 	tmp2 := FP256BN.NewECP()
 	tmp2.Copy(signature.W)
 	tmp2 = tmp2.Mul(signature.C)
 
-	//  S^s W ^ (-c)
-	tmp1.Sub(tmp2)
+	//  E = S^s W ^ (-c)
+	E.Sub(tmp2)
 
 	// L = s * P2
 	L := B.Mul(signature.SmallS)
@@ -175,7 +176,8 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 	tmp3 := signature.K.Mul(signature.C)
 	L.Sub(tmp3)
 
-	hash.writeECP(tmp1, signature.S, L, B, signature.K)
+	hash.writeECP(E, signature.S, signature.W, L, signature.K)
+	hash.writeECP2(g2())
 	hash.writeBytes(basename, message)
 
 	cDash := hash.sumToBIG()
@@ -184,6 +186,7 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 		return fmt.Errorf("c is not match: %v != %v", signature.C, cDash)
 	}
 
+	// check e(Y, R) == e(g_2, S)
 	a := FP256BN.Ate(ipk.Y, signature.R)
 	b := FP256BN.Ate(g2(), signature.S)
 
@@ -194,6 +197,7 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 		return fmt.Errorf("Ate(ipk.Y, signature.R) != Ate(g2(), signature.S)")
 	}
 
+	// check e(g2, T) == e(X, R W)
 	tpm3 := FP256BN.NewECP()
 	tpm3.Copy(signature.R)
 	tpm3.Add(signature.W)
@@ -211,7 +215,7 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 	for _, revoked := range rl {
 		tmp4 := FP256BN.NewECP()
 		tmp4.Copy(signature.S)
-		tmp4 = tmp1.Mul(revoked)
+		tmp4 = tmp4.Mul(revoked)
 
 		if signature.W == tmp4 {
 			return fmt.Errorf("the secret key revoked")
