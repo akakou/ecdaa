@@ -6,7 +6,11 @@ import (
 
 func TestAll(t *testing.T) {
 	message := []byte("hoge")
+	incorrect_message := []byte("hoge2")
+
 	basename := []byte("fuga")
+	incorrect_basename := []byte("fuga2")
+
 	password := []byte("piyo")
 
 	rng := InitRandom()
@@ -54,10 +58,31 @@ func TestAll(t *testing.T) {
 
 	}
 
-	err = Verify(message, basename, signature, &issuer.Ipk, RevocationList{})
+	t.Run("verify_signature_correct", func(t *testing.T) {
+		// fmt.Print("sign_correct...\n")
+		err = Verify(message, basename, signature, &issuer.Ipk, RevocationList{})
 
-	if err != nil {
-		t.Fatalf("verify: %v", err)
+		if err != nil {
+			t.Fatalf("verify: %v", err)
+		}
 
-	}
+	})
+
+	t.Run("verify_signature_msg_incorrect", func(t *testing.T) {
+		// fmt.Print("sign_msg_incorrect...\n")
+		err = Verify(incorrect_message, basename, signature, &issuer.Ipk, RevocationList{})
+
+		if err == nil {
+			t.Fatalf("verify: incorrect judge, msg is incorrect but verify say valid")
+		}
+	})
+
+	t.Run("verify_signature_bsn_incorrect", func(t *testing.T) {
+		// fmt.Print("sign_bsn_incorrect...\n")
+		err = Verify(message, incorrect_basename, signature, &issuer.Ipk, RevocationList{})
+
+		if err == nil {
+			t.Fatalf("verify: incorrect judge, basename is incorrect but verify say valid")
+		}
+	})
 }
