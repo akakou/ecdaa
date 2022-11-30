@@ -9,7 +9,8 @@ func TestAll(t *testing.T) {
 	incorrect_message := []byte("hoge2")
 
 	basename := []byte("fuga")
-	incorrect_basename := []byte("fuga2")
+	basename2 := []byte("fuga2")
+	incorrect_basename := []byte("fuga3")
 
 	password := []byte("piyo")
 
@@ -58,6 +59,20 @@ func TestAll(t *testing.T) {
 
 	}
 
+	same_bsn_signature, err := member.Sign(message, basename, cred, rng)
+
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+
+	}
+
+	not_same_bsn_signature, err := member.Sign(message, basename2, cred, rng)
+
+	if err != nil {
+		t.Fatalf("sign: %v", err)
+
+	}
+
 	t.Run("verify_signature_correct", func(t *testing.T) {
 		// fmt.Print("sign_correct...\n")
 		err = Verify(message, basename, signature, &issuer.Ipk, RevocationList{})
@@ -83,6 +98,18 @@ func TestAll(t *testing.T) {
 
 		if err == nil {
 			t.Fatalf("verify: incorrect judge, basename is incorrect but verify say valid")
+		}
+	})
+
+	t.Run("signing_are_same_k", func(t *testing.T) {
+		if !signature.K.Equals(same_bsn_signature.K) {
+			t.Fatalf("wrong that, Ks which are made by same base name are not same.")
+		}
+	})
+
+	t.Run("signing_are_not_same k", func(t *testing.T) {
+		if signature.K.Equals(not_same_bsn_signature.K) {
+			t.Fatalf("wrong that, Ks which are made by same base name are same.")
 		}
 	})
 }
