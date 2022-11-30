@@ -92,23 +92,21 @@ func (encoded *MiddleEncodedCredential) Decode() *Credential {
 }
 
 type MiddleEncodedSignature struct {
-	C      []byte
-	C2     []byte
-	N      []byte
+	SmallC []byte
+	SmallN []byte
 	SmallS []byte
 	R      []byte
 	S      []byte
 	T      []byte
 	W      []byte
-	E      []byte
 	K      []byte
 }
 
 func (sig *Signature) Encode() *MiddleEncodedSignature {
 	var encoded MiddleEncodedSignature
 
-	encoded.C = bigToBytes(sig.SmallC)
-	encoded.N = bigToBytes(sig.SmallN)
+	encoded.SmallC = bigToBytes(sig.SmallC)
+	encoded.SmallN = bigToBytes(sig.SmallN)
 	encoded.SmallS = bigToBytes(sig.SmallS)
 	encoded.R = ecpToBytes(sig.R)
 	encoded.S = ecpToBytes(sig.S)
@@ -122,8 +120,8 @@ func (sig *Signature) Encode() *MiddleEncodedSignature {
 func (encoded *MiddleEncodedSignature) Decode() *Signature {
 	var decoded Signature
 
-	decoded.SmallC = FP256BN.FromBytes(encoded.C)
-	decoded.SmallN = FP256BN.FromBytes(encoded.N)
+	decoded.SmallC = FP256BN.FromBytes(encoded.SmallC)
+	decoded.SmallN = FP256BN.FromBytes(encoded.SmallN)
 	decoded.SmallS = FP256BN.FromBytes(encoded.SmallS)
 	decoded.R = FP256BN.ECP_fromBytes(encoded.R)
 	decoded.S = FP256BN.ECP_fromBytes(encoded.S)
