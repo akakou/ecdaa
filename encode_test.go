@@ -89,30 +89,24 @@ func TestEncodeDecodeSignature(t *testing.T) {
 
 	rnd := InitRandom()
 
-	signature.C = FP256BN.Random(rnd)
-	signature.C2 = FP256BN.Random(rnd)
-	signature.N = FP256BN.Random(rnd)
+	signature.SmallC = FP256BN.Random(rnd)
+	signature.SmallN = FP256BN.Random(rnd)
 	signature.SmallS = FP256BN.Random(rnd)
 
 	signature.R = randomECP(rnd)
 	signature.S = randomECP(rnd)
 	signature.T = randomECP(rnd)
 	signature.W = randomECP(rnd)
-	signature.E = randomECP(rnd)
 	signature.K = randomECP(rnd)
 
 	encoded := signature.Encode()
 	decoded := encoded.Decode()
 
-	if FP256BN.Comp(signature.C, decoded.C) != 0 {
+	if FP256BN.Comp(signature.SmallC, decoded.SmallC) != 0 {
 		t.Fatalf("C is not equal")
 	}
 
-	if FP256BN.Comp(signature.C2, decoded.C2) != 0 {
-		t.Fatalf("C2 is not equal")
-	}
-
-	if FP256BN.Comp(signature.N, decoded.N) != 0 {
+	if FP256BN.Comp(signature.SmallN, decoded.SmallN) != 0 {
 		t.Fatalf("N is not equal")
 	}
 
@@ -134,10 +128,6 @@ func TestEncodeDecodeSignature(t *testing.T) {
 
 	if !signature.W.Equals(decoded.W) {
 		t.Fatalf("W is not equal")
-	}
-
-	if !signature.E.Equals(decoded.E) {
-		t.Fatalf("E is not equal")
 	}
 
 	if !signature.K.Equals(decoded.K) {

@@ -107,15 +107,13 @@ type MiddleEncodedSignature struct {
 func (sig *Signature) Encode() *MiddleEncodedSignature {
 	var encoded MiddleEncodedSignature
 
-	encoded.C = bigToBytes(sig.C)
-	encoded.C2 = bigToBytes(sig.C2)
-	encoded.N = bigToBytes(sig.N)
+	encoded.C = bigToBytes(sig.SmallC)
+	encoded.N = bigToBytes(sig.SmallN)
 	encoded.SmallS = bigToBytes(sig.SmallS)
 	encoded.R = ecpToBytes(sig.R)
 	encoded.S = ecpToBytes(sig.S)
 	encoded.T = ecpToBytes(sig.T)
 	encoded.W = ecpToBytes(sig.W)
-	encoded.E = ecpToBytes(sig.E)
 	encoded.K = ecpToBytes(sig.K)
 
 	return &encoded
@@ -124,15 +122,13 @@ func (sig *Signature) Encode() *MiddleEncodedSignature {
 func (encoded *MiddleEncodedSignature) Decode() *Signature {
 	var decoded Signature
 
-	decoded.C = FP256BN.FromBytes(encoded.C)
-	decoded.C2 = FP256BN.FromBytes(encoded.C2)
-	decoded.N = FP256BN.FromBytes(encoded.N)
+	decoded.SmallC = FP256BN.FromBytes(encoded.C)
+	decoded.SmallN = FP256BN.FromBytes(encoded.N)
 	decoded.SmallS = FP256BN.FromBytes(encoded.SmallS)
 	decoded.R = FP256BN.ECP_fromBytes(encoded.R)
 	decoded.S = FP256BN.ECP_fromBytes(encoded.S)
 	decoded.T = FP256BN.ECP_fromBytes(encoded.T)
 	decoded.W = FP256BN.ECP_fromBytes(encoded.W)
-	decoded.E = FP256BN.ECP_fromBytes(encoded.E)
 	decoded.K = FP256BN.ECP_fromBytes(encoded.K)
 
 	return &decoded

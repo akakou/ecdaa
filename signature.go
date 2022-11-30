@@ -38,15 +38,13 @@ type Credential struct {
 }
 
 type Signature struct {
-	C      *FP256BN.BIG
-	C2     *FP256BN.BIG
-	N      *FP256BN.BIG
+	SmallC *FP256BN.BIG
+	SmallN *FP256BN.BIG
 	SmallS *FP256BN.BIG
 	R      *FP256BN.ECP
 	S      *FP256BN.ECP
 	T      *FP256BN.ECP
 	W      *FP256BN.ECP
-	E      *FP256BN.ECP
 	K      *FP256BN.ECP
 }
 
@@ -103,6 +101,7 @@ func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core
 	L := parseECPFromTPMFmt(&comRsp.L.Point)
 	K := parseECPFromTPMFmt(&comRsp.K.Point)
 
+	// c2 = H(E, S, W, L, K, g2, basename, message)
 	hash = newHash()
 	hash.writeECP(E, S, W, L, K)
 	hash.writeECP2(g2())
@@ -122,22 +121,20 @@ func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core
 	s1 := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureS.Buffer)
 	n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
 
-	/* calc hash c1 = H( n | c2 ) */
+	/* calc hash c = H( n | c2 ) */
 	hash = newHash()
 	hash.writeBIG(n)
 	hash.writeBytes(c2Buf)
 	c := hash.sumToBIG()
 
 	signature := Signature{
-		C:      c,
+		SmallC: c,
 		SmallS: s1,
 		R:      R,
 		S:      S,
 		T:      T,
 		W:      W,
-		N:      n,
-		C2:     c2,
-		E:      E,
+		SmallN: n,
 		K:      K,
 	}
 
@@ -164,7 +161,7 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 	// E = W ^ c
 	tmp2 := FP256BN.NewECP()
 	tmp2.Copy(signature.W)
-	tmp2 = tmp2.Mul(signature.C)
+	tmp2 = tmp2.Mul(signature.SmallC)
 
 	//  E = S^s W ^ (-c)
 	E.Sub(tmp2)
@@ -173,17 +170,27 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 	L := B.Mul(signature.SmallS)
 
 	// c * K
-	tmp3 := signature.K.Mul(signature.C)
+	tmp3 := signature.K.Mul(signature.SmallC)
 	L.Sub(tmp3)
 
+	// c' = H(E, S, W, L, K, g2, basename, message)
 	hash.writeECP(E, signature.S, signature.W, L, signature.K)
 	hash.writeECP2(g2())
 	hash.writeBytes(basename, message)
 
 	cDash := hash.sumToBIG()
 
-	if FP256BN.Comp(signature.C2, cDash) != 0 {
-		return fmt.Errorf("c is not match: %v != %v", signature.C, cDash)
+	// c = H( n | c' )
+	cDashBuf := bigToBytes(cDash)
+
+	hash = newHash()
+	hash.writeBIG(signature.SmallN)
+	hash.writeBytes(cDashBuf)
+
+	c := hash.sumToBIG()
+
+	if FP256BN.Comp(signature.SmallC, c) != 0 {
+		return fmt.Errorf("c is not match: %v != %v", signature.SmallC, c)
 	}
 
 	// check e(Y, R) == e(g_2, S)
@@ -202,13 +209,13 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 	tpm3.Copy(signature.R)
 	tpm3.Add(signature.W)
 
-	c := FP256BN.Ate(g2(), signature.T)
-	d := FP256BN.Ate(ipk.X, tpm3)
+	d := FP256BN.Ate(g2(), signature.T)
+	e := FP256BN.Ate(ipk.X, tpm3)
 
-	c = FP256BN.Fexp(c)
 	d = FP256BN.Fexp(d)
+	e = FP256BN.Fexp(e)
 
-	if !c.Equals(d) {
+	if !d.Equals(e) {
 		return fmt.Errorf("Ate(g2(), signature.T) != Ate(ipk.X, tpm3)")
 	}
 
