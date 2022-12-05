@@ -9,6 +9,7 @@ import (
 	"miracl/core/FP256BN"
 
 	legacy "github.com/google/go-tpm/legacy/tpm2"
+
 	"github.com/google/go-tpm/tpm2"
 )
 
@@ -37,8 +38,7 @@ type CredCipher struct {
 }
 
 type IssuerJoinSession struct {
-	// B *FP256BN.ECP
-	Cred Credential
+	Cred *Credential
 }
 
 type MemberSession struct {
@@ -76,7 +76,9 @@ func (_ *Issuer) GenSeedForJoin(rng *core.RAND) (*JoinSeeds, *IssuerJoinSession,
 	seed.S2 = s2Buf
 	seed.Y2 = B.GetY()
 
-	session.Cred.B = B
+	session.Cred = &Credential{
+		B: B,
+	}
 
 	return &seed, &session, nil
 }
@@ -127,7 +129,7 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	comRsp, err := (*member.Tpm).Commit(handle, &P1, &S2, &Y2)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("commit error: %v\n", err)
+		return nil, nil, fmt.Errorf("commit error: %v", err)
 	}
 
 	// get result (Q)
@@ -151,7 +153,7 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	sign, err := (*member.Tpm).Sign(c2Buf[:], comRsp.Counter, handle)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("sign error: %v\n", err)
+		return nil, nil, fmt.Errorf("sign error: %v", err)
 	}
 
 	s1 := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureS.Buffer)
@@ -170,6 +172,10 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 	// todo: remove
 	req.Q = Q
 	req.EKCert, err = (*member.Tpm).ReadEKCert()
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("sign error: %v", err)
+	}
 
 	session.B = B
 	session.D = Q
@@ -194,9 +200,7 @@ func (member *Member) GenReqForJoin(seeds *JoinSeeds, rng *core.RAND) (*JoinRequ
 /**
  * Step3. make credential for join (by Issuer)
  */
-func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*CredCipher, error) {
-	var encCred CredCipher
-
+func (issuer *Issuer) MakeCredNoEncrypt(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*Credential, error) {
 	B := session.Cred.B
 	Q := req.Q
 
@@ -236,13 +240,24 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng
 
 	cred.D = Q
 
+	return &cred, nil
+}
+
+func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*CredCipher, error) {
+	var encCred CredCipher
+
 	secret := randomBytes(rng, 16)
 	iv := randomBytes(rng, 16)
+
+	cred, err := issuer.MakeCredNoEncrypt(req, session, rng)
+
+	if err != nil {
+		return nil, fmt.Errorf("enc cred: %v", err)
+	}
 
 	ABuf := ecpToBytes(cred.A)
 	CBuf := ecpToBytes(cred.C)
 
-	var err error
 	encCred.EncA, encCred.EncC, err = encCredAES(ABuf, CBuf, secret, iv)
 
 	if err != nil {
