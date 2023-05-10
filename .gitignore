@@ -13,3 +13,14 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+/ecdaa
+/m
+
+encrypted_aik.json
+
+/thirdparty/miracl
+/thirdparty/core
+thirdparty/go-tpm/
+
+/vendor
