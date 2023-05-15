@@ -27,13 +27,6 @@ func NewMember(tpm *TPM) Member {
 	return member
 }
 
-type Credential struct {
-	A *FP256BN.ECP
-	B *FP256BN.ECP
-	C *FP256BN.ECP
-	D *FP256BN.ECP
-}
-
 type Signature struct {
 	proof *SchnorrProof
 	S     *FP256BN.ECP

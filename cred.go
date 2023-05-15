@@ -7,6 +7,7 @@ import (
 	"miracl/core/FP256BN"
 
 	legacy "github.com/google/go-tpm/legacy/tpm2"
+	"github.com/google/go-tpm/tpm2"
 )
 
 type Credential struct {
@@ -83,49 +84,60 @@ func (issuer *Issuer) MakeCredEncrypted(req *JoinRequestTPM, B *FP256BN.ECP, rng
 	return &credCipher, cred, nil
 }
 
-// /**
-//  * Step4. activate credential for join with TPM2_activate_credential (by Member)
-//  */
-// func (member *Member) ActivateCredential(encCred *CredentialCipher, ipk *IPK, EkHandle, SrkHandle) (*Credential, error) {
-// 	var cred Credential
-// 	secret, err := (*member.Tpm).ActivateCredential(EkHandle, SrkHandle, encCred.IdObject, encCred.WrappedCredential)
+func VerifyCred(cred *Credential, ipk *IPK) error {
+	tmp := FP256BN.NewECP()
+	tmp.Copy(cred.A)
+	tmp.Add(cred.D)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	a := FP256BN.Ate(ipk.Y, cred.A)
+	b := FP256BN.Ate(g2(), cred.B)
 
-// 	decA, decC, err := decCredAES(encCred.EncA, encCred.EncC, secret, encCred.IV)
+	a = FP256BN.Fexp(a)
+	b = FP256BN.Fexp(b)
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	if !a.Equals(b) {
+		return fmt.Errorf("Ate(ipk.Y, cred.A) != Ate(g2(), cred.B)")
+	}
 
-// 	cred.A = FP256BN.ECP_fromBytes(decA)
-// 	cred.C = FP256BN.ECP_fromBytes(decC)
+	c := FP256BN.Ate(g2(), cred.C)
+	d := FP256BN.Ate(ipk.X, tmp)
 
-// 	tmp := FP256BN.NewECP()
-// 	tmp.Copy(cred.A)
-// 	tmp.Add(cred.D)
+	c = FP256BN.Fexp(c)
+	d = FP256BN.Fexp(d)
 
-// 	a := FP256BN.Ate(ipk.Y, cred.A)
-// 	b := FP256BN.Ate(g2(), cred.B)
+	if !c.Equals(d) {
+		return fmt.Errorf("Ate(g2(), cred.C) != Ate(ipk.X, tmp)")
+	}
 
-// 	a = FP256BN.Fexp(a)
-// 	b = FP256BN.Fexp(b)
+	return nil
+}
 
-// 	if !a.Equals(b) {
-// 		return nil, fmt.Errorf("Ate(ipk.Y, cred.A) != Ate(g2(), cred.B)")
-// 	}
+/**
+ * Step4. activate credential for join with TPM2_activate_credential (by Member)
+ */
+func (member *Member) ActivateCredential(
+	encCred *CredentialCipher,
+	B, D *FP256BN.ECP,
+	ipk *IPK,
+	EkHandle *tpm2.AuthHandle, SrkHandle *tpm2.NamedHandle) (*Credential, error) {
+	secret, err := (*member.Tpm).ActivateCredential(EkHandle, SrkHandle, encCred.IdObject, encCred.WrappedCredential)
 
-// 	c := FP256BN.Ate(g2(), cred.C)
-// 	d := FP256BN.Ate(ipk.X, tmp)
+	if err != nil {
+		return nil, err
+	}
 
-// 	c = FP256BN.Fexp(c)
-// 	d = FP256BN.Fexp(d)
+	decA, decC, err := decCredAES(encCred.A, encCred.C, secret, encCred.IV)
 
-// 	if !c.Equals(d) {
-// 		return nil, fmt.Errorf("Ate(g2(), cred.C) != Ate(ipk.X, tmp)")
-// 	}
+	if err != nil {
+		return nil, err
+	}
 
-// 	return &cred, nil
-// }
+	A := FP256BN.ECP_fromBytes(decA)
+	C := FP256BN.ECP_fromBytes(decC)
+
+	cred := Credential{
+		A, B, C, D,
+	}
+
+	return &cred, nil
+}
