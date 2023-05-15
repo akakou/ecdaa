@@ -1,9 +1,12 @@
 package ecdaa
 
 import (
+	"crypto/x509"
 	"encoding/binary"
 	"miracl/core"
 	"miracl/core/FP256BN"
+
+	"github.com/google/go-tpm/tpm2"
 )
 
 type JoinSeed struct {
@@ -40,6 +43,13 @@ func GenJoinSeed(rng *core.RAND) (*JoinSeed, *FP256BN.ECP, error) {
 type JoinRequest struct {
 	Proof *SchnorrProof
 	Q     *FP256BN.ECP
+}
+
+type JoinRequestTPM struct {
+	JoinReq *JoinRequest
+	Public  *tpm2.TPM2BPublic
+	EKCert  *x509.Certificate
+	SrkName []byte
 }
 
 /**
@@ -254,140 +264,4 @@ type JoinSeeds struct {
 // 	req.SrkName = srkHandle.Name.Buffer
 
 // 	return &req, &session, nil
-// }
-
-// /**
-//  * Step3. make credential for join (by Issuer)
-//  */
-// func (issuer *Issuer) MakeCredNoEncrypt(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*Credential, error) {
-// 	B := session.Cred.B
-// 	Q := req.Q
-
-// 	U1 := B.Mul(req.S1)
-// 	UTmp := Q.Mul(req.C1)
-
-// 	U1.Sub(UTmp)
-// 	U1.Affine()
-
-// 	hash := newHash()
-// 	hash.writeECP(U1, B, Q)
-// 	c2 := hash.sumToBIG()
-
-// 	c2Buf := bigToBytes(c2)
-
-// 	hash = newHash()
-// 	hash.writeBIG(req.N)
-// 	hash.writeBytes(c2Buf[:])
-// 	c1 := hash.sumToBIG()
-
-// 	if FP256BN.Comp(c1, req.C1) != 0 {
-// 		return nil, fmt.Errorf("U is not match (`%v` != `%v`)", c1.ToString(), req.C1.ToString())
-// 	}
-
-// 	var cred Credential
-
-// 	invY := FP256BN.NewBIGcopy(issuer.Isk.Y)
-// 	invY.Invmodp(p())
-
-// 	cred.A = B.Mul(invY)
-
-// 	cred.B = B
-// 	cred.C = FP256BN.NewECP()
-// 	cred.C.Copy(cred.A)
-// 	cred.C.Add(Q)
-// 	cred.C = cred.C.Mul(issuer.Isk.X)
-
-// 	cred.D = Q
-
-// 	return &cred, nil
-// }
-
-// func (issuer *Issuer) MakeCred(req *JoinRequest, session *IssuerJoinSession, rng *core.RAND) (*CredCipher, error) {
-// 	var encCred CredCipher
-
-// 	secret := randomBytes(rng, 16)
-// 	iv := randomBytes(rng, 16)
-
-// 	cred, err := issuer.MakeCredNoEncrypt(req, session, rng)
-
-// 	if err != nil {
-// 		return nil, fmt.Errorf("enc cred: %v", err)
-// 	}
-
-// 	ABuf := ecpToBytes(cred.A)
-// 	CBuf := ecpToBytes(cred.C)
-
-// 	encCred.EncA, encCred.EncC, err = encCredAES(ABuf, CBuf, secret, iv)
-
-// 	if err != nil {
-// 		return nil, fmt.Errorf("enc cred: %v", err)
-// 	}
-
-// 	aikName := legacy.HashValue{
-// 		Alg:   legacy.AlgSHA256,
-// 		Value: req.SrkName,
-// 	}
-
-// 	pub := req.EKCert.PublicKey.(*rsa.PublicKey)
-
-// 	encCred.IdObject, encCred.WrappedCredential, err = MakeCred(&aikName, pub, 16, secret)
-
-// 	if err != nil {
-// 		return nil, fmt.Errorf("enc cred: %v", err)
-// 	}
-// 	encCred.IV = iv
-
-// 	session.Cred = cred
-
-// 	return &encCred, nil
-// }
-
-// /**
-//  * Step4. activate credential for join with TPM2_activate_credential (by Member)
-//  */
-// func (member *Member) ActivateCredential(encCred *CredCipher, session *MemberSession, ipk *IPK) (*Credential, error) {
-// 	var cred Credential
-// 	secret, err := (*member.Tpm).ActivateCredential(session.EkHandle, session.SrkHandle, encCred.IdObject, encCred.WrappedCredential)
-
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	decA, decC, err := decCredAES(encCred.EncA, encCred.EncC, secret, encCred.IV)
-
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	cred.A = FP256BN.ECP_fromBytes(decA)
-// 	cred.C = FP256BN.ECP_fromBytes(decC)
-
-// 	cred.B = session.B
-// 	cred.D = session.D
-
-// 	tmp := FP256BN.NewECP()
-// 	tmp.Copy(cred.A)
-// 	tmp.Add(cred.D)
-
-// 	a := FP256BN.Ate(ipk.Y, cred.A)
-// 	b := FP256BN.Ate(g2(), cred.B)
-
-// 	a = FP256BN.Fexp(a)
-// 	b = FP256BN.Fexp(b)
-
-// 	if !a.Equals(b) {
-// 		return nil, fmt.Errorf("Ate(ipk.Y, cred.A) != Ate(g2(), cred.B)")
-// 	}
-
-// 	c := FP256BN.Ate(g2(), cred.C)
-// 	d := FP256BN.Ate(ipk.X, tmp)
-
-// 	c = FP256BN.Fexp(c)
-// 	d = FP256BN.Fexp(d)
-
-// 	if !c.Equals(d) {
-// 		return nil, fmt.Errorf("Ate(g2(), cred.C) != Ate(ipk.X, tmp)")
-// 	}
-
-// 	return &cred, nil
 // }
