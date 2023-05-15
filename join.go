@@ -1,6 +1,7 @@
 package ecdaa
 
 import (
+	"encoding/binary"
 	"miracl/core"
 	"miracl/core/FP256BN"
 )
@@ -11,30 +12,30 @@ type JoinSeed struct {
 	Y2       *FP256BN.BIG
 }
 
-// func GenJoinSeed(rng *core.RAND) (*JoinSeed, *FP256BN.ECP, error) {
-// 	// var seed JoinSeed
-// 	// basename := randomBytes(rng, 32)
+func GenJoinSeed(rng *core.RAND) (*JoinSeed, *FP256BN.ECP, error) {
+	var seed JoinSeed
+	basename := randomBytes(rng, 32)
 
-// 	// hash := newHash()
-// 	// hash.writeBytes(basename)
+	hash := newHash()
+	hash.writeBytes(basename)
 
-// 	// B, i, err := hash.hashToECP()
+	B, i, err := hash.hashToECP()
 
-// 	// if err != nil {
-// 	// 	return nil, nil, err
-// 	// }
+	if err != nil {
+		return nil, nil, err
+	}
 
-// 	// numBuf := make([]byte, binary.MaxVarintLen32)
-// 	// binary.PutVarint(numBuf, int64(i))
+	numBuf := make([]byte, binary.MaxVarintLen32)
+	binary.PutVarint(numBuf, int64(i))
 
-// 	// s2Buf := append(numBuf, basename[:]...)
+	s2Buf := append(numBuf, basename[:]...)
 
-// 	// seed.Basename = basename[:]
-// 	// seed.S2 = s2Buf
-// 	// seed.Y2 = B.GetY()
+	seed.Basename = basename[:]
+	seed.S2 = s2Buf
+	seed.Y2 = B.GetY()
 
-// 	return &seed, B, nil
-// }
+	return &seed, B, nil
+}
 
 type JoinRequest struct {
 	Proof *SchnorrProof
@@ -44,21 +45,20 @@ type JoinRequest struct {
 /**
  * Step2. generate request for join (by Member)
  */
-// func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, error) {
-func GenJoinReq(basename []byte, B *FP256BN.ECP, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, error) {
+func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, error) {
 	/* create key and get public key */
 	sk := randomBig(rng)
 
-	// /* set zero buffers to P1 */
-	// hash := newHash()
-	// hash.writeBytes(seed.S2)
-	// bX := hash.sumToBIG()
+	/* set zero buffers to P1 */
+	hash := newHash()
+	hash.writeBytes(seed.S2)
+	bX := hash.sumToBIG()
 
-	// B := FP256BN.NewECPbigs(bX, seed.Y2)
+	B := FP256BN.NewECPbigs(bX, seed.Y2)
 	// get result (Q)
 	Q := B.Mul(sk)
 
-	proof := proveSchnorr([]byte(""), basename, sk, B, B, rng)
+	proof := proveSchnorr([]byte(""), seed.Basename, sk, B, B, rng)
 
 	req := JoinRequest{
 		proof,
@@ -68,8 +68,8 @@ func GenJoinReq(basename []byte, B *FP256BN.ECP, rng *core.RAND) (*JoinRequest, 
 	return &req, sk, nil
 }
 
-func VerifyJoinReq(req *JoinRequest, basename []byte, B *FP256BN.ECP) error {
-	return verifySchnorr([]byte(""), basename, req.Proof, B, req.Q)
+func VerifyJoinReq(req *JoinRequest, seed *JoinSeed, B *FP256BN.ECP) error {
+	return verifySchnorr([]byte(""), seed.Basename, req.Proof, B, req.Q)
 }
 
 type JoinSeeds struct {
