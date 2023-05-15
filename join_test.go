@@ -35,4 +35,11 @@ func TestSW(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
+
+	randCred := RandomizeCred(cred, rng)
+	err = VerifyCred(&randCred, &issuer.Ipk)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 }

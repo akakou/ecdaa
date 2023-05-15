@@ -28,7 +28,7 @@ func NewMember(tpm *TPM) Member {
 }
 
 type Signature struct {
-	proof *SchnorrProof
+	Proof *SchnorrProof
 	S     *FP256BN.ECP
 	W     *FP256BN.ECP
 }
