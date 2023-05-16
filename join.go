@@ -68,7 +68,7 @@ func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, err
 	// get result (Q)
 	Q := B.Mul(sk)
 
-	proof := proveSchnorr([]byte(""), seed.Basename, sk, B, B, rng)
+	proof := proveSchnorr([]byte(""), seed.Basename, sk, B, Q, rng)
 
 	req := JoinRequest{
 		proof,
@@ -79,7 +79,9 @@ func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, err
 }
 
 func VerifyJoinReq(req *JoinRequest, seed *JoinSeed, B *FP256BN.ECP) error {
-	return verifySchnorr([]byte(""), seed.Basename, req.Proof, B, req.Q)
+	_, _, err := verifySchnorr([]byte(""), seed.Basename, req.Proof, B, req.Q)
+
+	return err
 }
 
 type JoinSeeds struct {
