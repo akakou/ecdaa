@@ -3,6 +3,7 @@ package ecdaa
 import (
 	"crypto/x509"
 	"fmt"
+	"miracl/core/FP256BN"
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
@@ -280,7 +281,29 @@ func (tpm *TPM) ReadEKCert() (*x509.Certificate, error) {
 	return cert, nil
 }
 
-func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.TPM2BSensitiveData, Y2 *tpm2.TPM2BECCParameter) (*tpm2.CommitResponse, error) {
+func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1_ECP *FP256BN.ECP, S2_bytes []byte, P2 *FP256BN.ECP) (*tpm2.CommitResponse, *FP256BN.ECP, *FP256BN.ECP, *FP256BN.ECP, error) {
+	/* set zero buffers to P1 */
+	xBuf := bigToBytes(P1_ECP.GetX())
+	yBuf := bigToBytes(P1_ECP.GetY())
+
+	P1 := tpm2.TPMSECCPoint{
+		X: tpm2.TPM2BECCParameter{
+			Buffer: xBuf,
+		},
+		Y: tpm2.TPM2BECCParameter{
+			Buffer: yBuf,
+		},
+	}
+
+	/* set up argument for commit */
+	S2 := tpm2.TPM2BSensitiveData{
+		Buffer: S2_bytes,
+	}
+
+	Y2 := tpm2.TPM2BECCParameter{
+		Buffer: bigToBytes(P2.GetY()),
+	}
+
 	commit := tpm2.Commit{
 		SignHandle: tpm2.AuthHandle{
 			Handle: handle.Handle,
@@ -288,21 +311,25 @@ func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1 *tpm2.TPMSECCPoint, S2 *tpm2.
 			Auth:   tpm2.PasswordAuth(tpm.password),
 		},
 		P1: tpm2.TPM2BECCPoint{
-			Point: *P1,
+			Point: P1,
 		},
-		S2: *S2,
-		Y2: *Y2,
+		S2: S2,
+		Y2: Y2,
 	}
 
 	rspC, err := commit.Execute(tpm.tpm)
 	if err != nil {
-		return nil, fmt.Errorf("commit: %v", err)
+		return nil, nil, nil, nil, fmt.Errorf("commit: %v", err)
 	}
 
-	return rspC, nil
+	E := parseECPFromTPMFmt(&rspC.E.Point)
+	L := parseECPFromTPMFmt(&rspC.L.Point)
+	K := parseECPFromTPMFmt(&rspC.K.Point)
+
+	return rspC, E, L, K, nil
 }
 
-func (tpm *TPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, error) {
+func (tpm *TPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm2.SignResponse, *FP256BN.BIG, *FP256BN.BIG, error) {
 	sign := tpm2.Sign{
 		KeyHandle: tpm2.AuthHandle{
 			Handle: handle.Handle,
@@ -329,8 +356,11 @@ func (tpm *TPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm
 	rspS, err := sign.Execute(tpm.tpm)
 
 	if err != nil {
-		return nil, fmt.Errorf("sign: %v", err)
+		return nil, nil, nil, fmt.Errorf("sign: %v", err)
 	}
 
-	return rspS, nil
+	s1 := FP256BN.FromBytes(rspS.Signature.Signature.ECDAA.SignatureS.Buffer)
+	n := FP256BN.FromBytes(rspS.Signature.Signature.ECDAA.SignatureR.Buffer)
+
+	return rspS, s1, n, nil
 }
