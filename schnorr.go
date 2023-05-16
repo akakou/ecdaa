@@ -6,8 +6,6 @@ import (
 	"miracl/core/FP256BN"
 )
 
-var a Hash
-
 type SchnorrProof struct {
 	SmallC *FP256BN.BIG
 	SmallS *FP256BN.BIG
@@ -62,7 +60,6 @@ func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, 
 	}
 
 	hash.writeBytes(basename, message)
-	a = hash
 
 	cDash := hash.sumToBIG()
 
