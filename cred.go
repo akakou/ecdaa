@@ -142,7 +142,7 @@ func (member *Member) ActivateCredential(
 	return &cred, nil
 }
 
-func RandomizeCred(cred *Credential, rng *core.RAND) Credential {
+func RandomizeCred(cred *Credential, rng *core.RAND) *Credential {
 	var randomized Credential
 
 	l := FP256BN.Random(rng)
@@ -152,5 +152,5 @@ func RandomizeCred(cred *Credential, rng *core.RAND) Credential {
 	randomized.C = cred.C.Mul(l)
 	randomized.D = cred.D.Mul(l)
 
-	return randomized
+	return &randomized
 }
