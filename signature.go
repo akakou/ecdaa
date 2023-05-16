@@ -1,6 +1,7 @@
 package ecdaa
 
 import (
+	"encoding/binary"
 	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
@@ -47,6 +48,69 @@ func Sign(
 		Proof:          proof,
 		RandomizedCred: randomizedCred,
 	}, nil
+}
+
+func SignTPM(message, basename []byte, cred *Credential, handle *KeyHandles, tpm *TPM, rng *core.RAND) (*Signature, error) {
+	hash := newHash()
+	hash.writeBytes(basename)
+
+	B, i, err := hash.hashToECP()
+
+	if err != nil {
+		return nil, err
+	}
+
+	numBuf := make([]byte, binary.MaxVarintLen32)
+	binary.PutVarint(numBuf, int64(i))
+
+	s2Buf := append(numBuf, basename[:]...)
+
+	randomizedCred := RandomizeCred(cred, rng)
+	S := randomizedCred.B
+	W := randomizedCred.D
+
+	/* run commit and get U */
+	comRsp, E, L, K, err := (*tpm).Commit(handle.Handle, S, s2Buf, B)
+
+	if err != nil {
+		return nil, fmt.Errorf("commit error: %v\n", err)
+	}
+
+	// c2 = H(E, S, W, L, B, K,basename, message)
+	hash = newHash()
+	hash.writeECP(E, S, W, L, B, K)
+	hash.writeBytes(basename, message)
+
+	c2 := hash.sumToBIG()
+
+	/* sign and get s1, n */
+	c2Buf := bigToBytes(c2)
+
+	_, s, n, err := (*tpm).Sign(c2Buf, comRsp.Counter, handle.Handle)
+
+	if err != nil {
+		return nil, fmt.Errorf("sign error: %v\n", err)
+	}
+
+	/* calc hash c = H( n | c2 ) */
+	hash = newHash()
+	hash.writeBIG(n)
+	hash.writeBytes(c2Buf)
+	c := hash.sumToBIG()
+
+	proof := SchnorrProof{
+		SmallC: c,
+		SmallS: s,
+		SmallN: n,
+		K:      K,
+	}
+
+	signature := Signature{
+		Proof:          &proof,
+		RandomizedCred: randomizedCred,
+	}
+
+	return &signature, nil
 }
 
 func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl RevocationList) error {

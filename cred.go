@@ -7,7 +7,6 @@ import (
 	"miracl/core/FP256BN"
 
 	legacy "github.com/google/go-tpm/legacy/tpm2"
-	"github.com/google/go-tpm/tpm2"
 )
 
 type Credential struct {
@@ -115,12 +114,13 @@ func VerifyCred(cred *Credential, ipk *IPK) error {
 /**
  * Step4. activate credential for join with TPM2_activate_credential (by Member)
  */
-func (member *Member) ActivateCredential(
+func ActivateCredential(
 	encCred *CredentialCipher,
 	B, D *FP256BN.ECP,
 	ipk *IPK,
-	EkHandle *tpm2.AuthHandle, SrkHandle *tpm2.NamedHandle) (*Credential, error) {
-	secret, err := (*member.Tpm).ActivateCredential(EkHandle, SrkHandle, encCred.IdObject, encCred.WrappedCredential)
+	handle *KeyHandles,
+	tpm *TPM) (*Credential, error) {
+	secret, err := (*tpm).ActivateCredential(handle.EkHandle, handle.SrkHandle, encCred.IdObject, encCred.WrappedCredential)
 
 	if err != nil {
 		return nil, err
