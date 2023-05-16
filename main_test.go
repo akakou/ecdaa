@@ -43,7 +43,7 @@ func TestTPM(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	cred, err := ActivateCredential(cipherCred, issuerB, req.JoinReq.K, &issuer.Ipk, handle, tpm)
+	cred, err := ActivateCredential(cipherCred, issuerB, req.JoinReq.Q, &issuer.Ipk, handle, tpm)
 
 	if err != nil {
 		t.Fatalf("activate credential: %v", err)

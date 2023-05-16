@@ -39,7 +39,10 @@ func GenJoinSeed(rng *core.RAND) (*JoinSeed, *FP256BN.ECP, error) {
 	return &seed, B, nil
 }
 
-type JoinRequest = SchnorrProof
+type JoinRequest struct {
+	Proof *SchnorrProof
+	Q     *FP256BN.ECP
+}
 
 type JoinRequestTPM struct {
 	JoinReq *JoinRequest
@@ -61,11 +64,16 @@ func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, err
 
 	B := FP256BN.NewECPbigs(bX, seed.Y2)
 	// get result (Q)
+	Q := B.Mul(sk)
 
-	// remove B
-	proof := proveSchnorr([]byte(""), nil, sk, B, nil, rng)
+	proof := proveSchnorr([]byte(""), nil, sk, B, Q, rng)
 
-	return proof, sk, nil
+	req := JoinRequest{
+		proof,
+		Q,
+	}
+
+	return &req, sk, nil
 }
 
 func GenReqForJoinWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTPM, *KeyHandles, error) {
@@ -121,9 +129,14 @@ func GenReqForJoinWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinReques
 		SmallS: s1,
 	}
 
+	req := JoinRequest{
+		Proof: &proof,
+		Q:     K,
+	}
+
 	reqTPM := JoinRequestTPM{
 		EKCert:  EKCert,
-		JoinReq: &proof,
+		JoinReq: &req,
 		SrkName: srkHandle.Name.Buffer,
 	}
 
@@ -137,7 +150,7 @@ func GenReqForJoinWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinReques
 }
 
 func VerifyJoinReq(req *JoinRequest, seed *JoinSeed, B *FP256BN.ECP) error {
-	err := verifySchnorr([]byte(""), nil, req, B, req.K)
+	err := verifySchnorr([]byte(""), nil, req.Proof, B, req.Q)
 
 	return err
 }

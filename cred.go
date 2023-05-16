@@ -36,11 +36,11 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, B *FP256BN.ECP, rng *core.RAND)
 
 	cred.C = FP256BN.NewECP()
 	cred.C.Copy(cred.A)
-	cred.C.Add(req.K)
+	cred.C.Add(req.Q)
 	cred.C = cred.C.Mul(issuer.Isk.X)
 
 	cred.B = B
-	cred.D = req.K
+	cred.D = req.Q
 
 	return &cred, nil
 }
