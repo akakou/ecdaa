@@ -17,12 +17,18 @@ type SchnorrProof struct {
 
 type SchnorrProver struct{}
 
-func commit(sk *FP256BN.BIG, B, S *FP256BN.ECP, rng *core.RAND) (*FP256BN.BIG, *FP256BN.ECP, *FP256BN.ECP, *FP256BN.ECP) {
+func commit(sk *FP256BN.BIG, B, S *FP256BN.ECP, rng *core.RAND, calcK bool) (*FP256BN.BIG, *FP256BN.ECP, *FP256BN.ECP, *FP256BN.ECP) {
 	r := randomBig(rng)
 
 	E := S.Mul(r)
 	L := B.Mul(r)
-	K := B.Mul(sk)
+
+	var K *FP256BN.ECP
+	if calcK {
+		K = B.Mul(sk)
+	} else {
+		K = nil
+	}
 
 	return r, E, L, K
 }
@@ -45,11 +51,16 @@ func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, 
 	hash.writeBytes(basename)
 	B, _, _ := hash.hashToECP()
 
-	r, E, L, K := commit(sk, B, S, rng)
+	r, E, L, K := commit(sk, B, S, rng, true)
 
 	// c' = H(E, S, W, L, B, K, basename, message)
 	hash = newHash()
-	hash.writeECP(E, S, W, L, S, B, K)
+	if basename == nil {
+		hash.writeECP(E, S, W)
+	} else {
+		hash.writeECP(E, S, W, L, B, K)
+	}
+
 	hash.writeBytes(basename, message)
 	a = hash
 
@@ -66,30 +77,34 @@ func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, 
 }
 
 func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.ECP) error {
-	hash := newHash()
-	hash.writeBytes(basename)
-
-	B, _, err := hash.hashToECP()
-	if err != nil {
-		return err
-	}
-
 	// E = S^s W ^ (-c)
 	E := S.Mul(proof.SmallS)
 	tmp := W.Mul(proof.SmallC)
 	E.Sub(tmp)
 
-	// L = B^s - K^c
-	L := B.Mul(proof.SmallS)
-	tmp = proof.K.Mul(proof.SmallC)
-	L.Sub(tmp)
-
 	// c' = H(E, S, W, L, B, K, basename, message)
-	hash = newHash()
-	hash.writeECP(E, S, W, L, S, B, proof.K)
-	hash.writeBytes(basename, message)
+	hash := newHash()
 
-	fmt.Printf("%v", diffHash(hash, a))
+	if basename == nil {
+		hash.writeECP(E, S, W)
+	} else {
+		bHash := newHash()
+		bHash.writeBytes(basename)
+
+		B, _, err := bHash.hashToECP()
+		if err != nil {
+			return err
+		}
+
+		// L = B^s - K^c
+		L := B.Mul(proof.SmallS)
+		tmp = proof.K.Mul(proof.SmallC)
+		L.Sub(tmp)
+
+		hash.writeECP(E, S, W, L, B, proof.K)
+	}
+
+	hash.writeBytes(basename, message)
 	cDash := hash.sumToBIG()
 
 	// c = H( n | c' )
@@ -105,5 +120,5 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 		return fmt.Errorf("c is not match: %v != %v", proof.SmallC, c)
 	}
 
-	return err
+	return nil
 }
