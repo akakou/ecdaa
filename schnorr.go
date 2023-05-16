@@ -65,13 +65,13 @@ func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, 
 	}
 }
 
-func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.ECP) (*FP256BN.ECP, *FP256BN.ECP, error) {
+func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.ECP) error {
 	hash := newHash()
 	hash.writeBytes(basename)
 
 	B, _, err := hash.hashToECP()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	// E = S^s W ^ (-c)
@@ -102,8 +102,8 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 	c := hash.sumToBIG()
 
 	if FP256BN.Comp(proof.SmallC, c) != 0 {
-		return nil, nil, fmt.Errorf("c is not match: %v != %v", proof.SmallC, c)
+		return fmt.Errorf("c is not match: %v != %v", proof.SmallC, c)
 	}
 
-	return E, L, err
+	return err
 }

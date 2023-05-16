@@ -79,7 +79,7 @@ func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, err
 }
 
 func VerifyJoinReq(req *JoinRequest, seed *JoinSeed, B *FP256BN.ECP) error {
-	_, _, err := verifySchnorr([]byte(""), seed.Basename, req.Proof, B, req.Q)
+	err := verifySchnorr([]byte(""), seed.Basename, req.Proof, B, req.Q)
 
 	return err
 }

@@ -1,6 +1,7 @@
 package ecdaa
 
 import (
+	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
@@ -49,33 +50,26 @@ func Sign(
 }
 
 func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl RevocationList) error {
-	_, _, err := verifySchnorr(message, basename, signature.Proof, signature.RandomizedCred.B, signature.RandomizedCred.D)
+	err := verifySchnorr(message, basename, signature.Proof, signature.RandomizedCred.B, signature.RandomizedCred.D)
 
 	if err != nil {
 		return err
 	}
 
-	// cred := Credential{
-	// 	A: E,
-	// 	B: signature.S,
-	// 	C: L,
-	// 	D: signature.W,
-	// }
+	err = VerifyCred(signature.RandomizedCred, ipk)
+	if err != nil {
+		return err
+	}
 
-	// err = VerifyCred(&cred, ipk)
-	// if err != nil {
-	// 	return err
-	// }
+	for _, revoked := range rl {
+		tmp4 := FP256BN.NewECP()
+		tmp4.Copy(signature.RandomizedCred.B)
+		tmp4 = tmp4.Mul(revoked)
 
-	// for _, revoked := range rl {
-	// 	tmp4 := FP256BN.NewECP()
-	// 	tmp4.Copy(signature.S)
-	// 	tmp4 = tmp4.Mul(revoked)
-
-	// 	if signature.W.Equals(tmp4) {
-	// 		return fmt.Errorf("the secret key revoked")
-	// 	}
-	// }
+		if signature.RandomizedCred.D.Equals(tmp4) {
+			return fmt.Errorf("the secret key revoked")
+		}
+	}
 
 	return nil
 }
