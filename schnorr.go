@@ -44,12 +44,19 @@ func sign(r, cDash, sk *FP256BN.BIG, rng *core.RAND) (*FP256BN.BIG, *FP256BN.BIG
 	return n, c, s
 }
 
+var a Hash
+
 func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, rng *core.RAND) *SchnorrProof {
 	hash := newHash()
 	hash.writeBytes(basename)
 	B, _, _ := hash.hashToECP()
 
 	r, E, L, K := commit(sk, B, S, rng, true)
+
+	// todo: remove
+	if W == nil {
+		W = K
+	}
 
 	// c' = H(E, S, W, L, B, K, basename, message)
 	hash = newHash()
@@ -58,8 +65,9 @@ func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, 
 	} else {
 		hash.writeECP(E, S, W, L, B, K)
 	}
-
 	hash.writeBytes(basename, message)
+	a = hash
+
 
 	cDash := hash.sumToBIG()
 
@@ -102,6 +110,7 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 	}
 
 	hash.writeBytes(basename, message)
+	diffHash(a, hash)
 	cDash := hash.sumToBIG()
 
 	// c = H( n | c' )

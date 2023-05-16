@@ -91,7 +91,7 @@ func (baseHash *Hash) hashToECP() (*FP256BN.ECP, uint32, error) {
 	return nil, 0, fmt.Errorf("error: Hashing failed")
 }
 
-func diffHash(a Hash, b Hash) error {
+func diffHash(a Hash, b Hash) {
 	result := ""
 
 	if len(a.B) != len(b.B) {
@@ -105,8 +105,8 @@ func diffHash(a Hash, b Hash) error {
 	}
 
 	if result == "" {
-		return nil
+		fmt.Println("diff: ok")
 	} else {
-		return fmt.Errorf(result)
+		fmt.Printf("diff: %v\n", result)
 	}
 }
