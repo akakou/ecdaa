@@ -1,10 +1,8 @@
 package ecdaa
 
-import (
-	"testing"
-)
+import "testing"
 
-func TestAll(t *testing.T) {
+func TestTPM(t *testing.T) {
 	message := []byte("hoge")
 	incorrect_message := []byte("hoge2")
 
@@ -29,48 +27,46 @@ func TestAll(t *testing.T) {
 		t.Errorf("%v", err)
 	}
 
-	seed, issuerSession, err := issuer.GenSeedForJoin(rng)
+	seed, issuerB, err := GenJoinSeed(rng)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 
-	member := NewMember(tpm)
-	req, memberSession, err := member.GenReqForJoin(seed, rng)
+	req, handle, err := GenReqForJoinWithTPM(seed, tpm, rng)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 
-	cipherCred, err := issuer.MakeCred(req, issuerSession, rng)
+	cipherCred, _, err := issuer.MakeCredEncrypted(req, issuerB, rng)
 
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 
-	cred, err := member.ActivateCredential(cipherCred, memberSession, &issuer.Ipk)
+	cred, err := ActivateCredential(cipherCred, issuerB, req.JoinReq.Q, &issuer.Ipk, handle, tpm)
 
 	if err != nil {
 		t.Fatalf("activate credential: %v", err)
 	}
 
-	signature, err := member.Sign(message, basename, cred, rng)
+	signature, err := SignTPM(message, basename, cred, handle, tpm, rng)
 
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 
 	}
 
-	same_bsn_signature, err := member.Sign(message, basename, cred, rng)
+	same_bsn_signature, err := SignTPM(message, basename, cred, handle, tpm, rng)
 
 	if err != nil {
 		t.Fatalf("sign: %v", err)
 
 	}
 
-	not_same_bsn_signature, err := member.Sign(message, basename2, cred, rng)
+	not_same_bsn_signature, err := SignTPM(message, basename2, cred, handle, tpm, rng)
 
 	if err != nil {
 		t.Fatalf("sign: %v", err)
-
 	}
 
 	t.Run("verify_signature_correct", func(t *testing.T) {
@@ -102,14 +98,68 @@ func TestAll(t *testing.T) {
 	})
 
 	t.Run("signing_are_same_k", func(t *testing.T) {
-		if !signature.K.Equals(same_bsn_signature.K) {
+		if !signature.Proof.K.Equals(same_bsn_signature.Proof.K) {
 			t.Fatalf("wrong that, Ks which are made by same base name are not same.")
 		}
 	})
 
 	t.Run("signing_are_not_same k", func(t *testing.T) {
-		if signature.K.Equals(not_same_bsn_signature.K) {
+		if signature.Proof.K.Equals(not_same_bsn_signature.Proof.K) {
 			t.Fatalf("wrong that, Ks which are made by same base name are same.")
 		}
 	})
+}
+
+func TestSW(t *testing.T) {
+	rng := InitRandom()
+	issuer := RandomIssuer(rng)
+
+	seed, issuerB, err := GenJoinSeed(rng)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	req, sk, err := GenJoinReq(seed, rng)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	err = VerifyJoinReq(req, seed, issuerB)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cred, err := issuer.MakeCred(req, issuerB, rng)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	err = VerifyCred(cred, &issuer.Ipk)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	randCred := RandomizeCred(cred, rng)
+	err = VerifyCred(randCred, &issuer.Ipk)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	signature, err := Sign([]byte("hello"), []byte("hello"), sk, cred, rng)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	err = Verify([]byte("hello"), []byte("hello"), signature, &issuer.Ipk, RevocationList{})
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 }

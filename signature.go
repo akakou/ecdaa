@@ -30,25 +30,27 @@ func NewMember(tpm *TPM) Member {
 	return member
 }
 
-type Credential struct {
-	A *FP256BN.ECP
-	B *FP256BN.ECP
-	C *FP256BN.ECP
-	D *FP256BN.ECP
-}
-
 type Signature struct {
-	SmallC *FP256BN.BIG
-	SmallN *FP256BN.BIG
-	SmallS *FP256BN.BIG
-	R      *FP256BN.ECP
-	S      *FP256BN.ECP
-	T      *FP256BN.ECP
-	W      *FP256BN.ECP
-	K      *FP256BN.ECP
+	Proof          *SchnorrProof
+	RandomizedCred *Credential
 }
 
-func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core.RAND) (*Signature, error) {
+func Sign(
+	message,
+	basename []byte,
+	sk *FP256BN.BIG, cred *Credential,
+	rng *core.RAND) (*Signature, error) {
+
+	randomizedCred := RandomizeCred(cred, rng)
+	proof := proveSchnorr(message, basename, sk, randomizedCred.B, randomizedCred.D, rng)
+
+	return &Signature{
+		Proof:          proof,
+		RandomizedCred: randomizedCred,
+	}, nil
+}
+
+func SignTPM(message, basename []byte, cred *Credential, handle *KeyHandles, tpm *TPM, rng *core.RAND) (*Signature, error) {
 	hash := newHash()
 	hash.writeBytes(basename)
 
@@ -63,43 +65,16 @@ func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core
 
 	s2Buf := append(numBuf, basename[:]...)
 
-	l := FP256BN.Random(rng)
-	R := cred.A.Mul(l)
-	S := cred.B.Mul(l)
-	T := cred.C.Mul(l)
-	W := cred.D.Mul(l)
-
-	xBuf := bigToBytes(S.GetX())
-	yBuf := bigToBytes(S.GetY())
-
-	P1 := tpm2.TPMSECCPoint{
-		X: tpm2.TPM2BECCParameter{
-			Buffer: xBuf,
-		},
-		Y: tpm2.TPM2BECCParameter{
-			Buffer: yBuf,
-		},
-	}
-
-	S2 := tpm2.TPM2BSensitiveData{
-		Buffer: s2Buf,
-	}
-
-	Y2 := tpm2.TPM2BECCParameter{
-		Buffer: bigToBytes(B.GetY()),
-	}
+	randomizedCred := RandomizeCred(cred, rng)
+	S := randomizedCred.B
+	W := randomizedCred.D
 
 	/* run commit and get U */
-	comRsp, err := (*member.Tpm).Commit(member.KeyHandles.Handle, &P1, &S2, &Y2)
+	comRsp, E, L, K, err := (*tpm).Commit(handle.Handle, S, s2Buf, B)
 
 	if err != nil {
 		return nil, fmt.Errorf("commit error: %v\n", err)
 	}
-
-	// get result (U)
-	E := parseECPFromTPMFmt(&comRsp.E.Point)
-	L := parseECPFromTPMFmt(&comRsp.L.Point)
-	K := parseECPFromTPMFmt(&comRsp.K.Point)
 
 	// c2 = H(E, S, W, L, B, K,basename, message)
 	hash = newHash()
@@ -111,14 +86,11 @@ func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core
 	/* sign and get s1, n */
 	c2Buf := bigToBytes(c2)
 
-	sign, err := (*member.Tpm).Sign(c2Buf, comRsp.Counter, member.KeyHandles.Handle)
+	_, s, n, err := (*tpm).Sign(c2Buf, comRsp.Counter, handle.Handle)
 
 	if err != nil {
 		return nil, fmt.Errorf("sign error: %v\n", err)
 	}
-
-	s1 := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureS.Buffer)
-	n := FP256BN.FromBytes(sign.Signature.Signature.ECDAA.SignatureR.Buffer)
 
 	/* calc hash c = H( n | c2 ) */
 	hash = newHash()
@@ -126,106 +98,64 @@ func (member *Member) Sign(message, basename []byte, cred *Credential, rng *core
 	hash.writeBytes(c2Buf)
 	c := hash.sumToBIG()
 
-	signature := Signature{
+	proof := SchnorrProof{
 		SmallC: c,
-		SmallS: s1,
-		R:      R,
-		S:      S,
-		T:      T,
-		W:      W,
+		SmallS: s,
 		SmallN: n,
 		K:      K,
+	}
+
+	signature := Signature{
+		Proof:          &proof,
+		RandomizedCred: randomizedCred,
 	}
 
 	return &signature, nil
 }
 
 func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl RevocationList) error {
-	hash := newHash()
-	hash.writeBytes(basename)
-
-	B, _, err := hash.hashToECP()
+	err := verifySchnorr(message, basename, signature.Proof, signature.RandomizedCred.B, signature.RandomizedCred.D)
 
 	if err != nil {
 		return err
 	}
 
-	hash = newHash()
-
-	// E = S^s
-	E := FP256BN.NewECP()
-	E.Copy(signature.S)
-	E = E.Mul(signature.SmallS)
-
-	// E = W ^ c
-	tmp2 := FP256BN.NewECP()
-	tmp2.Copy(signature.W)
-	tmp2 = tmp2.Mul(signature.SmallC)
-
-	//  E = S^s W ^ (-c)
-	E.Sub(tmp2)
-
-	// L = s * P2
-	L := B.Mul(signature.SmallS)
-
-	// c * K
-	tmp3 := signature.K.Mul(signature.SmallC)
-	L.Sub(tmp3)
-
-	// c' = H(E, S, W, L, B, K, basename, message)
-	hash.writeECP(E, signature.S, signature.W, L, B, signature.K)
-	hash.writeBytes(basename, message)
-
-	cDash := hash.sumToBIG()
-
-	// c = H( n | c' )
-	cDashBuf := bigToBytes(cDash)
-
-	hash = newHash()
-	hash.writeBIG(signature.SmallN)
-	hash.writeBytes(cDashBuf)
-
-	c := hash.sumToBIG()
-
-	if FP256BN.Comp(signature.SmallC, c) != 0 {
-		return fmt.Errorf("c is not match: %v != %v", signature.SmallC, c)
-	}
-
-	// check e(Y, R) == e(g_2, S)
-	a := FP256BN.Ate(ipk.Y, signature.R)
-	b := FP256BN.Ate(g2(), signature.S)
-
-	a = FP256BN.Fexp(a)
-	b = FP256BN.Fexp(b)
-
-	if !a.Equals(b) {
-		return fmt.Errorf("Ate(ipk.Y, signature.R) != Ate(g2(), signature.S)")
-	}
-
-	// check e(g2, T) == e(X, R W)
-	tpm3 := FP256BN.NewECP()
-	tpm3.Copy(signature.R)
-	tpm3.Add(signature.W)
-
-	d := FP256BN.Ate(g2(), signature.T)
-	e := FP256BN.Ate(ipk.X, tpm3)
-
-	d = FP256BN.Fexp(d)
-	e = FP256BN.Fexp(e)
-
-	if !d.Equals(e) {
-		return fmt.Errorf("Ate(g2(), signature.T) != Ate(ipk.X, tpm3)")
+	err = VerifyCred(signature.RandomizedCred, ipk)
+	if err != nil {
+		return err
 	}
 
 	for _, revoked := range rl {
 		tmp4 := FP256BN.NewECP()
-		tmp4.Copy(signature.S)
+		tmp4.Copy(signature.RandomizedCred.B)
 		tmp4 = tmp4.Mul(revoked)
 
-		if signature.W.Equals(tmp4) {
+		if signature.RandomizedCred.D.Equals(tmp4) {
 			return fmt.Errorf("the secret key revoked")
 		}
 	}
 
 	return nil
 }
+
+//   // E = S^s . W^-c
+//     // ----------------
+//     // S^s . W^-c
+//     //     = S^(r + c . sk) . W^-c
+//     //     = S^(r + c . sk) . W^-(c)
+//     //     = B^l .(r + c . sk) . Q^-(c . r . l)
+//     //     = B  .(r + c . sk) . Q ^ - (c . r )
+//     //     = B ^ sk
+//     let mut e = s.mul(&self.s);
+//     let tmp = w.mul(&self.c);
+//     e.sub(&tmp);
+
+//     // L = B^s - K^c
+//     // ----------
+//     // B^s - K^c
+//     //     = B^(r + c . sk) - B^(c . sk)
+//     //     = B^r
+//     //     = L
+//     let mut l = hash.mul(&self.s);
+//     let tmp = self.k.mul(&self.c);
+//     l.sub(&tmp);

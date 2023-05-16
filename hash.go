@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"miracl/core/FP256BN"
+	"reflect"
 )
 
 type Hash struct {
@@ -88,4 +89,24 @@ func (baseHash *Hash) hashToECP() (*FP256BN.ECP, uint32, error) {
 	}
 
 	return nil, 0, fmt.Errorf("error: Hashing failed")
+}
+
+func diffHash(a Hash, b Hash) error {
+	result := ""
+
+	if len(a.B) != len(b.B) {
+		result += fmt.Sprintf("size not match %v != %v\n", len(a.B), len(b.B))
+	}
+
+	for i := range a.B {
+		if !reflect.DeepEqual(a.B[i], b.B[i]) {
+			result = fmt.Sprintf("%v\nnot match (%v) %v != %v\n", result, i, a.B[i], b.B[i])
+		}
+	}
+
+	if result == "" {
+		return nil
+	} else {
+		return fmt.Errorf(result)
+	}
 }

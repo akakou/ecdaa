@@ -24,3 +24,4 @@ sh ./install.sh
 ```
 sudo tpm2_clear && sudo go test --run TestAll
 ```
+
