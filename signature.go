@@ -42,7 +42,11 @@ func Sign(
 	rng *core.RAND) (*Signature, error) {
 
 	randomizedCred := RandomizeCred(cred, rng)
-	proof := proveSchnorr(message, basename, sk, randomizedCred.B, randomizedCred.D, rng)
+	proof, err := proveSchnorr(message, basename, sk, nil, randomizedCred.B, randomizedCred.D, rng)
+
+	if err != nil {
+		return nil, err
+	}
 
 	return &Signature{
 		Proof:          proof,
@@ -114,7 +118,7 @@ func SignTPM(message, basename []byte, cred *Credential, handle *KeyHandles, tpm
 }
 
 func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl RevocationList) error {
-	err := verifySchnorr(message, basename, signature.Proof, signature.RandomizedCred.B, signature.RandomizedCred.D)
+	err := verifySchnorr(message, basename, signature.Proof, nil, signature.RandomizedCred.B, signature.RandomizedCred.D)
 
 	if err != nil {
 		return err

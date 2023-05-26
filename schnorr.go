@@ -44,15 +44,28 @@ func sign(r, cDash, sk *FP256BN.BIG, rng *core.RAND) (*FP256BN.BIG, *FP256BN.BIG
 	return n, c, s
 }
 
-func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, rng *core.RAND) *SchnorrProof {
-	hash := newHash()
-	hash.writeBytes(basename)
-	B, _, _ := hash.hashToECP()
+func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, B, S, W *FP256BN.ECP, rng *core.RAND) (*SchnorrProof, error) {
+	var err error
+
+	if B == nil {
+		hash := newHash()
+		hash.writeBytes(basename)
+
+		B, _, err = hash.hashToECP()
+
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	r, E, L, K := commit(sk, B, S, rng, true)
 
+	if W == nil {
+		W = K
+	}
+
 	// c' = H(E, S, W, L, B, K, basename, message)
-	hash = newHash()
+	hash := newHash()
 	if basename == nil {
 		hash.writeECP(E, S, W)
 	} else {
@@ -70,10 +83,23 @@ func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, 
 		SmallS: s,
 		SmallN: n,
 		K:      K,
-	}
+	}, nil
 }
 
-func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.ECP) error {
+func verifySchnorr(message, basename []byte, proof *SchnorrProof, B, S, W *FP256BN.ECP) error {
+	var err error
+
+	if B == nil {
+		hash := newHash()
+		hash.writeBytes(basename)
+
+		B, _, err = hash.hashToECP()
+
+		if err != nil {
+			return err
+		}
+	}
+
 	// E = S^s W ^ (-c)
 	E := S.Mul(proof.SmallS)
 	tmp := W.Mul(proof.SmallC)

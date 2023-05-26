@@ -63,25 +63,26 @@ func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, err
 	bX := hash.sumToBIG()
 
 	B := FP256BN.NewECPbigs(bX, seed.Y2)
-	// get result (Q)
-	Q := B.Mul(sk)
 
-	proof := proveSchnorr([]byte(""), nil, sk, B, Q, rng)
+	proof, err := proveSchnorr([]byte(""), nil, sk, B, B, nil, rng)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	req := JoinRequest{
 		proof,
-		Q,
+		B,
 	}
 
 	return &req, sk, nil
 }
 
-func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTPM, *KeyHandles, error) {
+func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTPM, *KeyHandles, *FP256BN.ECP, error) {
 	/* create key and get public key */
 	handle, ekHandle, srkHandle, _, err := tpm.CreateKey()
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	hash := newHash()
@@ -94,7 +95,7 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTP
 	comRsp, E, _, K, err := (*tpm).Commit(handle, B, seed.S2, B)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("commit error: %v", err)
+		return nil, nil, nil, fmt.Errorf("commit error: %v", err)
 	}
 
 	/* calc hash c2 = H( U1 | P1 | Q | m ) */
@@ -108,7 +109,7 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTP
 	_, s1, n, err := (*tpm).Sign(c2Buf[:], comRsp.Counter, handle)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("sign error: %v", err)
+		return nil, nil, nil, fmt.Errorf("sign error: %v", err)
 	}
 
 	/* calc hash c1 = H( n | c2 ) */
@@ -120,7 +121,7 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTP
 	EKCert, err := (*tpm).ReadEKCert()
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("sign error: %v", err)
+		return nil, nil, nil, fmt.Errorf("sign error: %v", err)
 	}
 
 	proof := SchnorrProof{
@@ -146,11 +147,11 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTP
 		Handle:    handle,
 	}
 
-	return &reqTPM, &keyHandles, nil
+	return &reqTPM, &keyHandles, B, nil
 }
 
 func VerifyJoinReq(req *JoinRequest, seed *JoinSeed, B *FP256BN.ECP) error {
-	err := verifySchnorr([]byte(""), nil, req.Proof, B, req.Q)
+	err := verifySchnorr([]byte(""), nil, req.Proof, B, B, req.Proof.K)
 
 	return err
 }
