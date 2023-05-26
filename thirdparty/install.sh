@@ -1,18 +1,23 @@
-### step1. install go-tpm
-git clone https://github.com/akakou/go-tpm
-cd go-tpm
-git checkout ecdaa
-cd ..
+BITS = 64
+CONFIG_PY = config${BITS}.py
 
-### step2. install miracl/core
+all: ./go-tpm ./miracl ./core
+	echo "Done"
 
-git clone https://github.com/miracl/core/
+./go-tpm:
+	git clone https://github.com/akakou/go-tpm \
+	&& cd go-tpm && git checkout ecdaa
 
-mkdir miracl
-cd miracl
-go mod init miracl
+./miracl: ./core
+	mkdir miracl \
+	&& cd miracl \
+	&& go mod init miracl \
+	&& cp -r ../core/go/* . 
 
-cp -r ../core/go/* .
-
-cd core/go
-echo -e "32\n\n" | python3 config64.py
+./core:
+	git clone https://github.com/miracl/core/  \
+	&& cd core/go \
+	&& echo "32\n0\n" | python3 ${CONFIG_PY}
+ 
+clean:
+	rm -rf ./go-tpm ./miracl ./core
