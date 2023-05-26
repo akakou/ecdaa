@@ -17,7 +17,7 @@ all: ./go-tpm ./miracl ./core
 ./core:
 	git clone https://github.com/miracl/core/  \
 	&& cd core/go \
-	&& echo "32\n0\n" | python3 ${CONFIG_PY}
+	&& echo -e "32\n0\n" | python3 ${CONFIG_PY}
  
 clean:
 	rm -rf ./go-tpm ./miracl ./core
