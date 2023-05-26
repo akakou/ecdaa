@@ -1,273 +1,373 @@
 package ecdaa
 
-// import (
-// 	"crypto/x509"
-// 	"miracl/core/FP256BN"
-
-// 	"github.com/google/go-tpm/tpm2"
-// )
-
-// type MiddleEncodedISK struct {
-// 	X []byte
-// 	Y []byte
-// }
-
-// func (isk *ISK) Encode() *MiddleEncodedISK {
-// 	var encoded MiddleEncodedISK
-
-// 	encoded.X = bigToBytes(isk.X)
-// 	encoded.Y = bigToBytes(isk.Y)
-
-// 	return &encoded
-// }
-
-// func (encoded *MiddleEncodedISK) Decode() *ISK {
-// 	var isk ISK
-
-// 	isk.X = FP256BN.FromBytes(encoded.X)
-// 	isk.Y = FP256BN.FromBytes(encoded.Y)
-
-// 	return &isk
-// }
-
-// type MiddleEncodedIPK struct {
-// 	X  []byte
-// 	Y  []byte
-// 	C  []byte
-// 	SX []byte
-// 	SY []byte
-// }
-
-// func (ipk *IPK) Encode() *MiddleEncodedIPK {
-// 	var encoded MiddleEncodedIPK
-
-// 	encoded.X = ecp2ToBytes(ipk.X)
-// 	encoded.Y = ecp2ToBytes(ipk.Y)
-// 	encoded.C = bigToBytes(ipk.C)
-// 	encoded.SX = bigToBytes(ipk.SX)
-// 	encoded.SY = bigToBytes(ipk.SY)
-
-// 	return &encoded
-// }
-
-// func (encoded *MiddleEncodedIPK) Decode() *IPK {
-// 	var decoded IPK
-
-// 	decoded.X = FP256BN.ECP2_fromBytes(encoded.X)
-// 	decoded.Y = FP256BN.ECP2_fromBytes(encoded.Y)
-// 	decoded.C = FP256BN.FromBytes(encoded.C)
-// 	decoded.SX = FP256BN.FromBytes(encoded.SX)
-// 	decoded.SY = FP256BN.FromBytes(encoded.SY)
-
-// 	return &decoded
-// }
-
-// type MiddleEncodedCredential struct {
-// 	A []byte
-// 	B []byte
-// 	C []byte
-// 	D []byte
-// }
-
-// func (cred *Credential) Encode() *MiddleEncodedCredential {
-// 	var encoded MiddleEncodedCredential
-
-// 	encoded.A = ecpToBytes(cred.A)
-// 	encoded.B = ecpToBytes(cred.B)
-// 	encoded.C = ecpToBytes(cred.C)
-// 	encoded.D = ecpToBytes(cred.D)
-
-// 	return &encoded
-// }
-
-// func (encoded *MiddleEncodedCredential) Decode() *Credential {
-// 	var decoded Credential
-
-// 	decoded.A = FP256BN.ECP_fromBytes(encoded.A)
-// 	decoded.B = FP256BN.ECP_fromBytes(encoded.B)
-// 	decoded.C = FP256BN.ECP_fromBytes(encoded.C)
-// 	decoded.D = FP256BN.ECP_fromBytes(encoded.D)
-
-// 	return &decoded
-// }
-
-// type MiddleEncodedSignature struct {
-// 	SmallC []byte
-// 	SmallN []byte
-// 	SmallS []byte
-// 	R      []byte
-// 	S      []byte
-// 	T      []byte
-// 	W      []byte
-// 	K      []byte
-// }
-
-// func (sig *Signature) Encode() *MiddleEncodedSignature {
-// 	var encoded MiddleEncodedSignature
-
-// 	encoded.SmallC = bigToBytes(sig.SmallC)
-// 	encoded.SmallN = bigToBytes(sig.SmallN)
-// 	encoded.SmallS = bigToBytes(sig.SmallS)
-// 	encoded.R = ecpToBytes(sig.R)
-// 	encoded.S = ecpToBytes(sig.S)
-// 	encoded.T = ecpToBytes(sig.T)
-// 	encoded.W = ecpToBytes(sig.W)
-// 	encoded.K = ecpToBytes(sig.K)
-
-// 	return &encoded
-// }
-
-// func (encoded *MiddleEncodedSignature) Decode() *Signature {
-// 	var decoded Signature
-
-// 	decoded.SmallC = FP256BN.FromBytes(encoded.SmallC)
-// 	decoded.SmallN = FP256BN.FromBytes(encoded.SmallN)
-// 	decoded.SmallS = FP256BN.FromBytes(encoded.SmallS)
-// 	decoded.R = FP256BN.ECP_fromBytes(encoded.R)
-// 	decoded.S = FP256BN.ECP_fromBytes(encoded.S)
-// 	decoded.T = FP256BN.ECP_fromBytes(encoded.T)
-// 	decoded.W = FP256BN.ECP_fromBytes(encoded.W)
-// 	decoded.K = FP256BN.ECP_fromBytes(encoded.K)
-
-// 	return &decoded
-// }
-
-// type MiddleEncodedJoinSeeds struct {
-// 	Basename []byte
-// 	S2       []byte
-// 	Y2       []byte
-// }
-
-// func (seeds *JoinSeeds) Encode() *MiddleEncodedJoinSeeds {
-// 	var encoded MiddleEncodedJoinSeeds
-// 	encoded.Basename = seeds.Basename
-// 	encoded.S2 = seeds.S2
-// 	encoded.Y2 = bigToBytes(seeds.Y2)
-
-// 	return &encoded
-// }
-
-// func (encoded *MiddleEncodedJoinSeeds) Decode() *JoinSeeds {
-// 	var decoded JoinSeeds
-// 	decoded.Basename = encoded.Basename
-// 	decoded.S2 = encoded.S2
-// 	decoded.Y2 = FP256BN.FromBytes(encoded.Y2)
+import (
+	"bytes"
+	"crypto/x509"
+	"encoding/gob"
+	"fmt"
+	"miracl/core/FP256BN"
+)
+
+func Encode[T any](data T) ([]byte, error) {
+	var network bytes.Buffer
+	enc := gob.NewEncoder(&network)
+
+	err := enc.Encode(data)
+	return network.Bytes(), err
+}
+
+func Decode[T any](target T, buf []byte) error {
+	var network bytes.Buffer
+	network.Write(buf)
+
+	dec := gob.NewDecoder(&network)
+	err := dec.Decode(&target)
+
+	return err
+}
+
+type MiddleEncodedISK struct {
+	X []byte
+	Y []byte
+}
+
+func (isk *ISK) Encode() ([]byte, error) {
+	var mid MiddleEncodedISK
+
+	mid.X = bigToBytes(isk.X)
+	mid.Y = bigToBytes(isk.Y)
+
+	return Encode(&mid)
+}
+
+func (isk *ISK) Decode(encoded []byte) error {
+	var mid MiddleEncodedISK
+
+	err := Decode(&mid, encoded)
+
+	if err != nil {
+		return err
+	}
+
+	isk.X = FP256BN.FromBytes(mid.X)
+	isk.Y = FP256BN.FromBytes(mid.Y)
+
+	return nil
+}
+
+type MiddleEncodedIPK struct {
+	X  []byte
+	Y  []byte
+	C  []byte
+	SX []byte
+	SY []byte
+}
+
+func (ipk *IPK) Encode() ([]byte, error) {
+	var mid MiddleEncodedIPK
+
+	mid.X = ecp2ToBytes(ipk.X)
+	mid.Y = ecp2ToBytes(ipk.Y)
+	mid.C = bigToBytes(ipk.C)
+	mid.SX = bigToBytes(ipk.SX)
+	mid.SY = bigToBytes(ipk.SY)
+
+	return Encode(mid)
+}
+
+func (decoded *IPK) Decode(encoded []byte) error {
+	var mid MiddleEncodedIPK
+
+	err := Decode(&mid, encoded)
+	if err != nil {
+		fmt.Printf("error")
+		return err
+	}
+
+	decoded.X = FP256BN.ECP2_fromBytes(mid.X)
+	decoded.Y = FP256BN.ECP2_fromBytes(mid.Y)
+	decoded.C = FP256BN.FromBytes(mid.C)
+	decoded.SX = FP256BN.FromBytes(mid.SX)
+	decoded.SY = FP256BN.FromBytes(mid.SY)
+
+	return nil
+}
+
+type MiddleEncodedCredential struct {
+	A []byte
+	B []byte
+	C []byte
+	D []byte
+}
+
+func (cred *Credential) Encode() ([]byte, error) {
+	var mid MiddleEncodedCredential
 
-// 	return &decoded
-// }
+	mid.A = ecpToBytes(cred.A)
+	mid.B = ecpToBytes(cred.B)
+	mid.C = ecpToBytes(cred.C)
+	mid.D = ecpToBytes(cred.D)
 
-// type MiddleEncodedJoinRequest struct {
-// 	Public  []byte
-// 	EKCert  []byte
-// 	C1      []byte
-// 	S1      []byte
-// 	N       []byte
-// 	Q       []byte
-// 	SrkName []byte
-// }
+	return Encode(mid)
+}
 
-// func (request *JoinRequest) Encode() *MiddleEncodedJoinRequest {
-// 	var encoded MiddleEncodedJoinRequest
-// 	public, err := tpm2.Marshal(request.Public)
+func (decoded *Credential) Decode(encoded []byte) error {
+	var mid MiddleEncodedCredential
 
-// 	if err != nil {
-// 		panic(err)
-// 	}
+	err := Decode(&mid, encoded)
+	if err != nil {
+		return err
+	}
 
-// 	encoded.Public = public
-// 	encoded.EKCert = request.EKCert.Raw
+	decoded.A = FP256BN.ECP_fromBytes(mid.A)
+	decoded.B = FP256BN.ECP_fromBytes(mid.B)
+	decoded.C = FP256BN.ECP_fromBytes(mid.C)
+	decoded.D = FP256BN.ECP_fromBytes(mid.D)
 
-// 	encoded.C1 = bigToBytes(request.C1)
-// 	encoded.S1 = bigToBytes(request.S1)
-// 	encoded.N = bigToBytes(request.N)
-// 	encoded.Q = ecpToBytes(request.Q)
+	return nil
+}
 
-// 	encoded.SrkName = request.SrkName
+type MiddleEncodedProof struct {
+	SmallC []byte
+	SmallN []byte
+	SmallS []byte
+	K      []byte
+}
 
-// 	return &encoded
-// }
+func (proof *SchnorrProof) Encode() ([]byte, error) {
+	var mid MiddleEncodedProof
 
-// func (encoded *MiddleEncodedJoinRequest) Decode() (*JoinRequest, error) {
-// 	var decoded JoinRequest
+	mid.SmallC = bigToBytes(proof.SmallC)
+	mid.SmallN = bigToBytes(proof.SmallN)
+	mid.SmallS = bigToBytes(proof.SmallS)
+	mid.K = ecpToBytes(proof.K)
 
-// 	var pub tpm2.TPM2BPublic
-// 	err := tpm2.Unmarshal(encoded.Public, &pub)
+	return Encode(mid)
+}
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func (decoded *SchnorrProof) Decode(encoded []byte) error {
+	var mid MiddleEncodedProof
 
-// 	decoded.Public = &pub
-// 	decoded.EKCert, err = x509.ParseCertificate(encoded.EKCert)
+	err := Decode(&mid, encoded)
+	if err != nil {
+		return nil
+	}
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	decoded.SmallC = FP256BN.FromBytes(mid.SmallC)
+	decoded.SmallS = FP256BN.FromBytes(mid.SmallS)
+	decoded.SmallN = FP256BN.FromBytes(mid.SmallN)
+	decoded.K = FP256BN.ECP_fromBytes(mid.K)
 
-// 	decoded.C1 = FP256BN.FromBytes(encoded.C1)
-// 	decoded.S1 = FP256BN.FromBytes(encoded.S1)
-// 	decoded.N = FP256BN.FromBytes(encoded.N)
-// 	decoded.Q = FP256BN.ECP_fromBytes(encoded.Q)
+	return nil
+}
 
-// 	decoded.SrkName = encoded.SrkName
+type MiddleEncodedSignature struct {
+	Credential []byte
+	Proof      []byte
+}
 
-// 	return &decoded, nil
-// }
+func (signature *Signature) Encode() ([]byte, error) {
+	var err error
+	var mid MiddleEncodedSignature
 
-// type MiddleEncodedCredCipher struct {
-// 	WrappedCredential []byte
-// 	IdObject          []byte
-// 	EncA              []byte
-// 	EncC              []byte
-// 	IV                []byte
-// }
+	mid.Credential, err = signature.RandomizedCred.Encode()
 
-// func (cipher *CredCipher) Encode() *MiddleEncodedCredCipher {
-// 	var encoded MiddleEncodedCredCipher
+	if err != nil {
+		return nil, err
+	}
 
-// 	encoded.WrappedCredential = cipher.WrappedCredential
-// 	encoded.IdObject = cipher.IdObject
+	mid.Proof, err = signature.Proof.Encode()
 
-// 	encoded.EncA = cipher.EncA
-// 	encoded.EncC = cipher.EncC
+	if err != nil {
+		return nil, err
+	}
 
-// 	encoded.IV = cipher.IV
+	return Encode(mid)
+}
 
-// 	return &encoded
-// }
+func (decoded *Signature) Decode(encoded []byte) error {
+	var mid MiddleEncodedSignature
+	var cred Credential
+	var proof SchnorrProof
 
-// func (encoded *MiddleEncodedCredCipher) Decode() *CredCipher {
-// 	var decoded CredCipher
+	err := Decode(&mid, encoded)
+	if err != nil {
+		return err
+	}
 
-// 	decoded.WrappedCredential = encoded.WrappedCredential
-// 	decoded.IdObject = encoded.IdObject
+	err = cred.Decode(mid.Credential)
 
-// 	decoded.EncA = encoded.EncA
-// 	decoded.EncC = encoded.EncC
+	if err != nil {
+		return err
+	}
 
-// 	decoded.IV = encoded.IV
+	err = proof.Decode(mid.Proof)
 
-// 	return &decoded
-// }
+	if err != nil {
+		return err
+	}
 
-// func EncodeRevocationList(list RevocationList) [][]byte {
-// 	var result [][]byte
+	decoded.RandomizedCred = &cred
+	decoded.Proof = &proof
 
-// 	for _, sk := range list {
-// 		encoded := bigToBytes(sk)
-// 		result = append(result, encoded)
-// 	}
+	return nil
+}
 
-// 	return result
-// }
+type MiddleEncodedJoinSeed struct {
+	Basename []byte
+	S2       []byte
+	Y2       []byte
+}
 
-// func DecodeRevocationList(list [][]byte) RevocationList {
-// 	result := RevocationList{}
+func (seeds *JoinSeed) Encode() ([]byte, error) {
+	var mid MiddleEncodedJoinSeed
+	mid.Basename = seeds.Basename
+	mid.S2 = seeds.S2
+	mid.Y2 = bigToBytes(seeds.Y2)
 
-// 	for _, sk := range list {
-// 		decoded := FP256BN.FromBytes(sk)
-// 		result = append(result, decoded)
-// 	}
+	return Encode(mid)
+}
 
-// 	return result
-// }
+func (decoded *JoinSeed) Decode(encoded []byte) error {
+	var mid MiddleEncodedJoinSeed
+
+	err := Decode(&mid, encoded)
+
+	if err != nil {
+		return err
+	}
+
+	decoded.Basename = mid.Basename
+	decoded.S2 = mid.S2
+	decoded.Y2 = FP256BN.FromBytes(mid.Y2)
+
+	return nil
+}
+
+type MiddleEncodedJoinRequest struct {
+	Proof []byte
+	Q     []byte
+}
+
+func (request *JoinRequest) Encode() ([]byte, error) {
+	var err error
+	var mid MiddleEncodedJoinRequest
+
+	mid.Q = ecpToBytes(request.Q)
+	mid.Proof, err = request.Proof.Encode()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return Encode(mid)
+}
+
+func (decoded *JoinRequest) Decode(encoded []byte) error {
+	var mid MiddleEncodedJoinRequest
+
+	err := Decode(&mid, encoded)
+
+	if err != nil {
+		return nil
+	}
+
+	decoded.Q = FP256BN.ECP_fromBytes(mid.Q)
+
+	decoded.Proof = &SchnorrProof{}
+	err = decoded.Proof.Decode(mid.Proof)
+
+	return err
+}
+
+type MiddleEncodedJoinRequestTPM struct {
+	JoinReq []byte
+	EKCert  []byte
+	SrkName []byte
+}
+
+func (request *JoinRequestTPM) Encode() ([]byte, error) {
+	var mid MiddleEncodedJoinRequestTPM
+	var err error
+
+	mid.EKCert = request.EKCert.Raw
+	mid.SrkName = request.SrkName
+	mid.JoinReq, err = request.JoinReq.Encode()
+
+	if err != nil {
+		return nil, err
+	}
+
+	return Encode(mid)
+}
+
+func (decoded *JoinRequestTPM) Decode(encoded []byte) error {
+	var mid MiddleEncodedJoinRequestTPM
+	decoded.JoinReq = &JoinRequest{}
+
+	err := Decode(&mid, encoded)
+
+	if err != nil {
+		fmt.Printf("1. %v", err)
+
+		return err
+	}
+
+	decoded.SrkName = mid.SrkName
+	decoded.EKCert, err = x509.ParseCertificate(mid.EKCert)
+
+	if err != nil {
+		fmt.Printf("2. %v", err)
+
+		return err
+	}
+
+	err = decoded.JoinReq.Decode(mid.JoinReq)
+
+	if err != nil {
+		fmt.Printf("3. %v", err)
+
+		return err
+	}
+
+	return nil
+
+}
+
+type MiddleEncodedCredCipher struct {
+	WrappedCredential []byte
+	IdObject          []byte
+	EncA              []byte
+	EncC              []byte
+	IV                []byte
+}
+
+func (cipher *CredentialCipher) Encode() ([]byte, error) {
+	return Encode(cipher)
+}
+
+func (decoded *CredentialCipher) Decode(buf []byte) error {
+	return Decode(decoded, buf)
+}
+
+func EncodeRevocationList(list RevocationList) [][]byte {
+	var result [][]byte
+
+	for _, sk := range list {
+		encoded := bigToBytes(sk)
+		result = append(result, encoded)
+	}
+
+	return result
+}
+
+func DecodeRevocationList(list [][]byte) RevocationList {
+	result := RevocationList{}
+
+	for _, sk := range list {
+		decoded := FP256BN.FromBytes(sk)
+		result = append(result, decoded)
+	}
+
+	return result
+}

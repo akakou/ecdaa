@@ -32,7 +32,7 @@ func TestTPM(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	req, handle, err := GenReqForJoinWithTPM(seed, tpm, rng)
+	req, handle, err := GenJoinReqWithTPM(seed, tpm, rng)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}

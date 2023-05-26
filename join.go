@@ -76,7 +76,7 @@ func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, err
 	return &req, sk, nil
 }
 
-func GenReqForJoinWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTPM, *KeyHandles, error) {
+func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTPM, *KeyHandles, error) {
 	/* create key and get public key */
 	handle, ekHandle, srkHandle, _, err := tpm.CreateKey()
 

@@ -1,7 +1,7 @@
 package ecdaa
 
 import (
-	"errors"
+	"fmt"
 	"miracl/core"
 	"miracl/core/FP256BN"
 )
@@ -82,8 +82,7 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	sX := FP256BN.Modmul(c, x, p())
 	sX = FP256BN.Modadd(rX, sX, p())
 
-	sY := FP256BN.NewBIG()
-	sY = FP256BN.Modmul(y, c, p())
+	sY := FP256BN.Modmul(y, c, p())
 	sY = FP256BN.Modadd(rY, sY, p())
 
 	// copy pointers to ipk
@@ -124,7 +123,7 @@ func VerifyIPK(ipk *IPK) error {
 	if FP256BN.Comp(c, cDash) == 0 {
 		return nil
 	} else {
-		return errors.New("IPK is not valid\n")
+		return fmt.Errorf("IPK is not valid\n")
 	}
 }
 
