@@ -167,118 +167,148 @@ func TestEncodeDecodeJoinSeeds(t *testing.T) {
 	}
 }
 
-// func TestEncodedDecodeJoinRequest(t *testing.T) {
-// 	var joinRequest JoinRequest
+func TestEncodedDecodeJoinRequest(t *testing.T) {
+	rnd := InitRandom()
 
-// 	password := []byte("hoge")
+	joinRequest := JoinRequest{
+		Proof: &SchnorrProof{
+			SmallC: randomBig(rnd),
+			SmallS: randomBig(rnd),
+			SmallN: randomBig(rnd),
+			K:      randomECP(rnd),
+		},
+		Q: randomECP(rnd),
+	}
 
-// 	tpm, err := OpenTPM(password, TPM_PATH)
-// 	defer tpm.Close()
+	encoded, _ := joinRequest.Encode()
+	decoded := JoinRequest{}
+	decoded.Decode(encoded)
 
-// 	if err != nil {
-// 		t.Errorf("%v", err)
-// 	}
+	if FP256BN.Comp(joinRequest.Proof.SmallC, decoded.Proof.SmallC) != 0 {
+		t.Fatalf("C is not equal")
+	}
 
-// 	cert, err := tpm.ReadEKCert()
+	if FP256BN.Comp(joinRequest.Proof.SmallN, decoded.Proof.SmallN) != 0 {
+		t.Fatalf("N is not equal")
+	}
 
-// 	if err != nil {
-// 		t.Errorf("%v", err)
-// 	}
+	if FP256BN.Comp(joinRequest.Proof.SmallS, decoded.Proof.SmallS) != 0 {
+		t.Fatalf("SmallS is not equal")
+	}
 
-// 	rnd := core.NewRAND()
+	if !joinRequest.Q.Equals(decoded.Q) {
+		t.Fatalf("Q is not equal")
+	}
 
-// 	joinRequest.EKCert = cert
+	if !joinRequest.Proof.K.Equals(decoded.Proof.K) {
+		t.Fatalf("K is not equal")
+	}
+}
 
-// 	param := publicParams()
+func TestEncodedDecodeJoinRequestTPM(t *testing.T) {
+	password := []byte("hoge")
 
-// 	joinRequest.Public = &tpm2.TPM2BPublic{
-// 		PublicArea: param.key,
-// 	}
+	tpm, err := OpenTPM(password, TPM_PATH)
+	defer tpm.Close()
 
-// 	joinRequest.C1 = FP256BN.Random(rnd)
-// 	joinRequest.S1 = FP256BN.Random(rnd)
-// 	joinRequest.N = FP256BN.Random(rnd)
-// 	joinRequest.Q = randomECP(rnd)
-// 	joinRequest.SrkName = randomBytes(rnd, 32)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-// 	encoded := joinRequest.Encode()
-// 	decoded, err := encoded.Decode()
+	cert, err := tpm.ReadEKCert()
 
-// 	if err != nil {
-// 		t.Errorf("%v", err)
-// 	}
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-// 	reEncoded, err := tpm2.Marshal(joinRequest.Public)
+	rnd := core.NewRAND()
 
-// 	if err != nil {
-// 		t.Errorf("%v", err)
-// 	}
+	joinRequestTpm := JoinRequestTPM{
+		JoinReq: &JoinRequest{
+			Proof: &SchnorrProof{
+				SmallC: randomBig(rnd),
+				SmallS: randomBig(rnd),
+				SmallN: randomBig(rnd),
+				K:      randomECP(rnd),
+			},
+			Q: randomECP(rnd),
+		},
+		EKCert:  cert,
+		SrkName: randomBytes(rnd, 32),
+	}
 
-// 	if !bytes.Equal(joinRequest.EKCert.RawIssuer, decoded.EKCert.RawIssuer) {
-// 		t.Fatalf("EKCert is not equal")
-// 	}
+	encoded, err := joinRequestTpm.Encode()
+	decoded := JoinRequestTPM{}
+	decoded.Decode(encoded)
 
-// 	if !bytes.Equal(
-// 		encoded.Public,
-// 		reEncoded) {
-// 		t.Fatalf("Public is not equal")
-// 	}
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-// 	if FP256BN.Comp(joinRequest.C1, decoded.C1) != 0 {
-// 		t.Fatalf("C1 is not equal")
-// 	}
+	if !bytes.Equal(joinRequestTpm.EKCert.RawIssuer, decoded.EKCert.RawIssuer) {
+		t.Fatalf("EKCert is not equal")
+	}
 
-// 	if FP256BN.Comp(joinRequest.S1, decoded.S1) != 0 {
-// 		t.Fatalf("S1 is not equal")
-// 	}
+	if FP256BN.Comp(joinRequestTpm.JoinReq.Proof.SmallC, decoded.JoinReq.Proof.SmallC) != 0 {
+		t.Fatalf("C1 is not equal")
+	}
 
-// 	if FP256BN.Comp(joinRequest.N, decoded.N) != 0 {
-// 		t.Fatalf("N is not equal")
-// 	}
+	if FP256BN.Comp(joinRequestTpm.JoinReq.Proof.SmallS, decoded.JoinReq.Proof.SmallS) != 0 {
+		t.Fatalf("S1 is not equal")
+	}
 
-// 	if !joinRequest.Q.Equals(decoded.Q) {
-// 		t.Fatalf("Q is not equal")
-// 	}
+	if FP256BN.Comp(joinRequestTpm.JoinReq.Proof.SmallN, decoded.JoinReq.Proof.SmallN) != 0 {
+		t.Fatalf("N is not equal")
+	}
 
-// 	if !bytes.Equal(joinRequest.SrkName, decoded.SrkName) {
-// 		t.Fatalf("SrkName is not equal")
-// 	}
-// }
+	if !joinRequestTpm.JoinReq.Q.Equals(decoded.JoinReq.Q) {
+		t.Fatalf("Q is not equal")
+	}
 
-// func TestEncodedDecodeCredCipher(t *testing.T) {
-// 	var credCipher CredCipher
+	if !bytes.Equal(joinRequestTpm.SrkName, decoded.SrkName) {
+		t.Fatalf("SrkName is not equal")
+	}
 
-// 	rnd := core.NewRAND()
+	if !joinRequestTpm.JoinReq.Proof.K.Equals(decoded.JoinReq.Proof.K) {
+		t.Fatalf("K is not equal")
+	}
+}
 
-// 	credCipher.WrappedCredential = randomBytes(rnd, 32)
-// 	credCipher.IdObject = randomBytes(rnd, 32)
-// 	credCipher.EncA = randomBytes(rnd, 32)
-// 	credCipher.EncC = randomBytes(rnd, 32)
-// 	credCipher.IV = randomBytes(rnd, 32)
+func TestEncodedDecodeCredCipher(t *testing.T) {
+	var credCipher CredentialCipher
 
-// 	encoded := credCipher.Encode()
-// 	decoded := encoded.Decode()
+	rnd := core.NewRAND()
 
-// 	if !bytes.Equal(credCipher.WrappedCredential, decoded.WrappedCredential) {
-// 		t.Fatalf("WrappedCredential is not equal")
-// 	}
+	credCipher.WrappedCredential = randomBytes(rnd, 32)
+	credCipher.IdObject = randomBytes(rnd, 32)
+	credCipher.EncA = randomBytes(rnd, 32)
+	credCipher.EncC = randomBytes(rnd, 32)
+	credCipher.IV = randomBytes(rnd, 32)
 
-// 	if !bytes.Equal(credCipher.IdObject, decoded.IdObject) {
-// 		t.Fatalf("IdObject is not equal")
-// 	}
+	encoded, _ := credCipher.Encode()
+	decoded := CredentialCipher{}
+	decoded.Decode(encoded)
 
-// 	if !bytes.Equal(credCipher.EncA, decoded.EncA) {
-// 		t.Fatalf("EncA is not equal")
-// 	}
+	if !bytes.Equal(credCipher.WrappedCredential, decoded.WrappedCredential) {
+		t.Fatalf("WrappedCredential is not equal")
+	}
 
-// 	if !bytes.Equal(credCipher.EncC, decoded.EncC) {
-// 		t.Fatalf("EncC is not equal")
-// 	}
+	if !bytes.Equal(credCipher.IdObject, decoded.IdObject) {
+		t.Fatalf("IdObject is not equal")
+	}
 
-// 	if !bytes.Equal(credCipher.IV, decoded.IV) {
-// 		t.Fatalf("IV is not equal")
-// 	}
-// }
+	if !bytes.Equal(credCipher.EncA, decoded.EncA) {
+		t.Fatalf("EncA is not equal")
+	}
+
+	if !bytes.Equal(credCipher.EncC, decoded.EncC) {
+		t.Fatalf("EncC is not equal")
+	}
+
+	if !bytes.Equal(credCipher.IV, decoded.IV) {
+		t.Fatalf("IV is not equal")
+	}
+}
 
 func TestEncodedDecodeRL(t *testing.T) {
 	var rl RevocationList

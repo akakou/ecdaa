@@ -254,7 +254,7 @@ func (request *JoinRequest) Encode() ([]byte, error) {
 	var mid MiddleEncodedJoinRequest
 
 	mid.Q = ecpToBytes(request.Q)
-	mid.Proof, err = Encode(request.Proof)
+	mid.Proof, err = request.Proof.Encode()
 
 	if err != nil {
 		return nil, err
@@ -274,7 +274,10 @@ func (decoded *JoinRequest) Decode(encoded []byte) error {
 
 	decoded.Q = FP256BN.ECP_fromBytes(mid.Q)
 
-	return Decode(decoded.Proof, mid.Proof)
+	decoded.Proof = &SchnorrProof{}
+	err = decoded.Proof.Decode(mid.Proof)
+
+	return err
 }
 
 type MiddleEncodedJoinRequestTPM struct {
@@ -285,29 +288,49 @@ type MiddleEncodedJoinRequestTPM struct {
 
 func (request *JoinRequestTPM) Encode() ([]byte, error) {
 	var mid MiddleEncodedJoinRequestTPM
+	var err error
+
 	mid.EKCert = request.EKCert.Raw
 	mid.SrkName = request.SrkName
+	mid.JoinReq, err = request.JoinReq.Encode()
 
-	return request.JoinReq.Encode()
+	if err != nil {
+		return nil, err
+	}
+
+	return Encode(mid)
 }
 
 func (decoded *JoinRequestTPM) Decode(encoded []byte) error {
 	var mid MiddleEncodedJoinRequestTPM
+	decoded.JoinReq = &JoinRequest{}
 
 	err := Decode(&mid, encoded)
 
 	if err != nil {
-		return nil
+		fmt.Printf("1. %v", err)
+
+		return err
 	}
 
 	decoded.SrkName = mid.SrkName
 	decoded.EKCert, err = x509.ParseCertificate(mid.EKCert)
 
 	if err != nil {
+		fmt.Printf("2. %v", err)
+
 		return err
 	}
 
-	return Decode(&decoded.JoinReq, mid.JoinReq)
+	err = decoded.JoinReq.Decode(mid.JoinReq)
+
+	if err != nil {
+		fmt.Printf("3. %v", err)
+
+		return err
+	}
+
+	return nil
 
 }
 
