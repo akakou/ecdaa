@@ -35,14 +35,47 @@ type Signature struct {
 	RandomizedCred *Credential
 }
 
-func Sign(
+type SWSigner struct {
+	cred *Credential
+	sk   *FP256BN.BIG
+}
+
+type TPMSigner struct {
+	cred   *Credential
+	handle *KeyHandles
+	tpm    *TPM
+}
+
+func NewSWSigner(cred *Credential, sk *FP256BN.BIG) SWSigner {
+	var signer = SWSigner{
+		cred: cred,
+		sk:   sk,
+	}
+
+	return signer
+}
+
+func NewTPMSigner(cred *Credential, handle *KeyHandles, tpm *TPM) TPMSigner {
+	var signer = TPMSigner{
+		cred:   cred,
+		handle: handle,
+		tpm:    tpm,
+	}
+
+	return signer
+}
+
+type Signer interface {
+	Sign(message, basename []byte, rng *core.RAND) (*Signature, error)
+}
+
+func (signer SWSigner) Sign(
 	message,
 	basename []byte,
-	sk *FP256BN.BIG, cred *Credential,
 	rng *core.RAND) (*Signature, error) {
 
-	randomizedCred := RandomizeCred(cred, rng)
-	proof := proveSchnorr(message, basename, sk, randomizedCred.B, randomizedCred.D, rng)
+	randomizedCred := RandomizeCred(signer.cred, rng)
+	proof := proveSchnorr(message, basename, signer.sk, randomizedCred.B, randomizedCred.D, rng)
 
 	return &Signature{
 		Proof:          proof,
@@ -50,7 +83,7 @@ func Sign(
 	}, nil
 }
 
-func SignTPM(message, basename []byte, cred *Credential, handle *KeyHandles, tpm *TPM, rng *core.RAND) (*Signature, error) {
+func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signature, error) {
 	hash := newHash()
 	hash.writeBytes(basename)
 
@@ -65,15 +98,15 @@ func SignTPM(message, basename []byte, cred *Credential, handle *KeyHandles, tpm
 
 	s2Buf := append(numBuf, basename[:]...)
 
-	randomizedCred := RandomizeCred(cred, rng)
+	randomizedCred := RandomizeCred(signer.cred, rng)
 	S := randomizedCred.B
 	W := randomizedCred.D
 
 	/* run commit and get U */
-	comRsp, E, L, K, err := (*tpm).Commit(handle.Handle, S, s2Buf, B)
+	comRsp, E, L, K, err := (*signer.tpm).Commit(signer.handle.Handle, S, s2Buf, B)
 
 	if err != nil {
-		return nil, fmt.Errorf("commit error: %v\n", err)
+		return nil, fmt.Errorf("commit error: %v", err)
 	}
 
 	// c2 = H(E, S, W, L, B, K,basename, message)
@@ -86,10 +119,10 @@ func SignTPM(message, basename []byte, cred *Credential, handle *KeyHandles, tpm
 	/* sign and get s1, n */
 	c2Buf := bigToBytes(c2)
 
-	_, s, n, err := (*tpm).Sign(c2Buf, comRsp.Counter, handle.Handle)
+	_, s, n, err := (*signer.tpm).Sign(c2Buf, comRsp.Counter, signer.handle.Handle)
 
 	if err != nil {
-		return nil, fmt.Errorf("sign error: %v\n", err)
+		return nil, fmt.Errorf("sign error: %v", err)
 	}
 
 	/* calc hash c = H( n | c2 ) */
@@ -137,25 +170,3 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 
 	return nil
 }
-
-//   // E = S^s . W^-c
-//     // ----------------
-//     // S^s . W^-c
-//     //     = S^(r + c . sk) . W^-c
-//     //     = S^(r + c . sk) . W^-(c)
-//     //     = B^l .(r + c . sk) . Q^-(c . r . l)
-//     //     = B  .(r + c . sk) . Q ^ - (c . r )
-//     //     = B ^ sk
-//     let mut e = s.mul(&self.s);
-//     let tmp = w.mul(&self.c);
-//     e.sub(&tmp);
-
-//     // L = B^s - K^c
-//     // ----------
-//     // B^s - K^c
-//     //     = B^(r + c . sk) - B^(c . sk)
-//     //     = B^r
-//     //     = L
-//     let mut l = hash.mul(&self.s);
-//     let tmp = self.k.mul(&self.c);
-//     l.sub(&tmp);
