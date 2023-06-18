@@ -1,4 +1,4 @@
-package ecdaa
+package tpm_utils
 
 import (
 	"crypto/aes"
@@ -7,7 +7,7 @@ import (
 	"miracl/core/FP256BN"
 )
 
-func encCredAES(srcA, srcC, secret, iv []byte) ([]byte, []byte, error) {
+func EncCredAES(srcA, srcC, secret, iv []byte) ([]byte, []byte, error) {
 	var destA, destC [FP256BN.MODBYTES + 1]byte
 
 	secretCipher, err := aes.NewCipher(secret)
@@ -25,7 +25,7 @@ func encCredAES(srcA, srcC, secret, iv []byte) ([]byte, []byte, error) {
 	return destA[:], destC[:], nil
 }
 
-func decCredAES(srcA, srcC, secret, iv []byte) ([]byte, []byte, error) {
+func DecCredAES(srcA, srcC, secret, iv []byte) ([]byte, []byte, error) {
 	var destA, destC [FP256BN.MODBYTES + 1]byte
 
 	secretCipher, err := aes.NewCipher(secret)

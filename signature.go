@@ -3,16 +3,19 @@ package ecdaa
 import (
 	"encoding/binary"
 	"fmt"
+	"mcl_utils"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
+	"github.com/akakou/ecdaa/tools"
+	"github.com/akakou/ecdaa/tpm_utils"
 	"github.com/google/go-tpm/tpm2"
 )
 
 type RevocationList = []*FP256BN.BIG
 
 type Member struct {
-	Tpm        *TPM
+	Tpm        *tpm_utils.TPM
 	KeyHandles *KeyHandles
 }
 
@@ -22,7 +25,7 @@ type KeyHandles struct {
 	Handle    *tpm2.AuthHandle
 }
 
-func NewMember(tpm *TPM) Member {
+func NewMember(tpm *tpm_utils.TPM) Member {
 	var member = Member{
 		Tpm: tpm,
 	}
@@ -43,7 +46,7 @@ type SWSigner struct {
 type TPMSigner struct {
 	cred   *Credential
 	handle *KeyHandles
-	tpm    *TPM
+	tpm    *tpm_utils.TPM
 }
 
 func NewSWSigner(cred *Credential, sk *FP256BN.BIG) SWSigner {
@@ -55,7 +58,7 @@ func NewSWSigner(cred *Credential, sk *FP256BN.BIG) SWSigner {
 	return signer
 }
 
-func NewTPMSigner(cred *Credential, handle *KeyHandles, tpm *TPM) TPMSigner {
+func NewTPMSigner(cred *Credential, handle *KeyHandles, tpm *tpm_utils.TPM) TPMSigner {
 	var signer = TPMSigner{
 		cred:   cred,
 		handle: handle,
@@ -84,10 +87,10 @@ func (signer SWSigner) Sign(
 }
 
 func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signature, error) {
-	hash := newHash()
-	hash.writeBytes(basename)
+	hash := tools.NewHash()
+	hash.WriteBytes(basename)
 
-	B, i, err := hash.hashToECP()
+	B, i, err := hash.HashToECP()
 
 	if err != nil {
 		return nil, err
@@ -110,14 +113,14 @@ func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signat
 	}
 
 	// c2 = H(E, S, W, L, B, K,basename, message)
-	hash = newHash()
-	hash.writeECP(E, S, W, L, B, K)
-	hash.writeBytes(basename, message)
+	hash = tools.NewHash()
+	hash.WriteECP(E, S, W, L, B, K)
+	hash.WriteBytes(basename, message)
 
-	c2 := hash.sumToBIG()
+	c2 := hash.SumToBIG()
 
 	/* sign and get s1, n */
-	c2Buf := bigToBytes(c2)
+	c2Buf := mcl_utils.BigToBytes(c2)
 
 	_, s, n, err := (*signer.tpm).Sign(c2Buf, comRsp.Counter, signer.handle.Handle)
 
@@ -126,10 +129,10 @@ func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signat
 	}
 
 	/* calc hash c = H( n | c2 ) */
-	hash = newHash()
-	hash.writeBIG(n)
-	hash.writeBytes(c2Buf)
-	c := hash.sumToBIG()
+	hash = tools.NewHash()
+	hash.WriteBIG(n)
+	hash.WriteBytes(c2Buf)
+	c := hash.SumToBIG()
 
 	proof := SchnorrProof{
 		SmallC: c,

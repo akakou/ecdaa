@@ -1,4 +1,4 @@
-package ecdaa
+package tpm_utils
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	legacy "github.com/google/go-tpm/legacy/tpm2"
 )
 
-const TPM_PATH = "/dev/tpm0"
 
 func TestCreateKey(t *testing.T) {
 	password := []byte("piyo")

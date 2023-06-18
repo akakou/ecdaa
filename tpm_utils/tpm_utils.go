@@ -1,4 +1,4 @@
-package ecdaa
+package tpm_utils
 
 import (
 	"crypto"
@@ -10,8 +10,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"miracl/core/FP256BN"
 
 	legacy "github.com/google/go-tpm/legacy/tpm2"
+	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpmutil"
 )
 
@@ -106,4 +108,11 @@ func MakeCred(aik *legacy.HashValue, pub crypto.PublicKey, symBlockSize int, sec
 	}
 
 	return packedID, packedEncSecret, nil
+}
+
+func parseECPFromTPMFmt(tpmEcc *tpm2.TPMSECCPoint) *FP256BN.ECP {
+	x := FP256BN.FromBytes(tpmEcc.X.Buffer)
+	y := FP256BN.FromBytes(tpmEcc.Y.Buffer)
+
+	return FP256BN.NewECPbigs(x, y)
 }

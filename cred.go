@@ -3,9 +3,11 @@ package ecdaa
 import (
 	"crypto/rsa"
 	"fmt"
+	"mcl_utils"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
+	"github.com/akakou/ecdaa/tpm_utils"
 	legacy "github.com/google/go-tpm/legacy/tpm2"
 )
 
@@ -30,7 +32,7 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, B *FP256BN.ECP, rng *core.RAND)
 	var cred Credential
 
 	invY := FP256BN.NewBIGcopy(issuer.Isk.Y)
-	invY.Invmodp(p())
+	invY.Invmodp(mcl_utils.P())
 
 	cred.A = B.Mul(invY)
 
@@ -48,8 +50,8 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, B *FP256BN.ECP, rng *core.RAND)
 func (issuer *Issuer) MakeCredEncrypted(req *JoinRequestTPM, B *FP256BN.ECP, rng *core.RAND) (*CredentialCipher, *Credential, error) {
 	var credCipher CredentialCipher
 
-	secret := randomBytes(rng, 16)
-	iv := randomBytes(rng, 16)
+	secret := mcl_utils.RandomBytes(rng, 16)
+	iv := mcl_utils.RandomBytes(rng, 16)
 
 	cred, err := issuer.MakeCred(req.JoinReq, B, rng)
 
@@ -57,10 +59,10 @@ func (issuer *Issuer) MakeCredEncrypted(req *JoinRequestTPM, B *FP256BN.ECP, rng
 		return nil, nil, fmt.Errorf("enc cred: %v", err)
 	}
 
-	ABuf := ecpToBytes(cred.A)
-	CBuf := ecpToBytes(cred.C)
+	ABuf := mcl_utils.EcpToBytes(cred.A)
+	CBuf := mcl_utils.EcpToBytes(cred.C)
 
-	credCipher.A, credCipher.C, err = encCredAES(ABuf, CBuf, secret, iv)
+	credCipher.A, credCipher.C, err = tpm_utils.EncCredAES(ABuf, CBuf, secret, iv)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("enc cred: %v", err)
@@ -73,7 +75,7 @@ func (issuer *Issuer) MakeCredEncrypted(req *JoinRequestTPM, B *FP256BN.ECP, rng
 
 	pub := req.EKCert.PublicKey.(*rsa.PublicKey)
 
-	credCipher.IdObject, credCipher.WrappedCredential, err = MakeCred(&aikName, pub, 16, secret)
+	credCipher.IdObject, credCipher.WrappedCredential, err = tpm_utils.MakeCred(&aikName, pub, 16, secret)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("enc cred: %v", err)
@@ -89,7 +91,7 @@ func VerifyCred(cred *Credential, ipk *IPK) error {
 	tmp.Add(cred.D)
 
 	a := FP256BN.Ate(ipk.Y, cred.A)
-	b := FP256BN.Ate(g2(), cred.B)
+	b := FP256BN.Ate(mcl_utils.G2(), cred.B)
 
 	a = FP256BN.Fexp(a)
 	b = FP256BN.Fexp(b)
@@ -98,7 +100,7 @@ func VerifyCred(cred *Credential, ipk *IPK) error {
 		return fmt.Errorf("Ate(ipk.Y, cred.A) != Ate(g2(), cred.B)")
 	}
 
-	c := FP256BN.Ate(g2(), cred.C)
+	c := FP256BN.Ate(mcl_utils.G2(), cred.C)
 	d := FP256BN.Ate(ipk.X, tmp)
 
 	c = FP256BN.Fexp(c)
@@ -119,14 +121,14 @@ func ActivateCredential(
 	B, D *FP256BN.ECP,
 	ipk *IPK,
 	handle *KeyHandles,
-	tpm *TPM) (*Credential, error) {
+	tpm *tpm_utils.TPM) (*Credential, error) {
 	secret, err := (*tpm).ActivateCredential(handle.EkHandle, handle.SrkHandle, encCred.IdObject, encCred.WrappedCredential)
 
 	if err != nil {
 		return nil, err
 	}
 
-	decA, decC, err := decCredAES(encCred.A, encCred.C, secret, encCred.IV)
+	decA, decC, err := tpm_utils.DecCredAES(encCred.A, encCred.C, secret, encCred.IV)
 
 	if err != nil {
 		return nil, err

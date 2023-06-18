@@ -1,11 +1,12 @@
 package ecdaa
 
 import (
+	"mcl_utils"
 	"testing"
 )
 
 func TestNewIssuer(t *testing.T) {
-	rng := InitRandom()
+	rng := mcl_utils.InitRandom()
 
 	issuer := RandomIssuer(rng)
 
