@@ -2,8 +2,11 @@ package ecdaa
 
 import (
 	"fmt"
+	"mcl_utils"
 	"miracl/core"
 	"miracl/core/FP256BN"
+
+	"github.com/akakou/ecdaa/tools"
 )
 
 type SchnorrProof struct {
@@ -16,7 +19,7 @@ type SchnorrProof struct {
 type SchnorrProver struct{}
 
 func commit(sk *FP256BN.BIG, B, S *FP256BN.ECP, rng *core.RAND, calcK bool) (*FP256BN.BIG, *FP256BN.ECP, *FP256BN.ECP, *FP256BN.ECP) {
-	r := randomBig(rng)
+	r := mcl_utils.RandomBig(rng)
 
 	E := S.Mul(r)
 	L := B.Mul(r)
@@ -32,36 +35,36 @@ func commit(sk *FP256BN.BIG, B, S *FP256BN.ECP, rng *core.RAND, calcK bool) (*FP
 }
 
 func sign(r, cDash, sk *FP256BN.BIG, rng *core.RAND) (*FP256BN.BIG, *FP256BN.BIG, *FP256BN.BIG) {
-	n := randomBig(rng)
+	n := mcl_utils.RandomBig(rng)
 
-	hash := newHash()
-	hash.writeBIG(n, cDash)
-	c := hash.sumToBIG()
+	hash := tools.NewHash()
+	hash.WriteBIG(n, cDash)
+	c := hash.SumToBIG()
 
-	s := FP256BN.Modmul(c, sk, p())
-	s = FP256BN.Modadd(r, s, p())
+	s := FP256BN.Modmul(c, sk, mcl_utils.P())
+	s = FP256BN.Modadd(r, s, mcl_utils.P())
 
 	return n, c, s
 }
 
 func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, rng *core.RAND) *SchnorrProof {
-	hash := newHash()
-	hash.writeBytes(basename)
-	B, _, _ := hash.hashToECP()
+	hash := tools.NewHash()
+	hash.WriteBytes(basename)
+	B, _, _ := hash.HashToECP()
 
 	r, E, L, K := commit(sk, B, S, rng, true)
 
 	// c' = H(E, S, W, L, B, K, basename, message)
-	hash = newHash()
+	hash = tools.NewHash()
 	if basename == nil {
-		hash.writeECP(E, S, W)
+		hash.WriteECP(E, S, W)
 	} else {
-		hash.writeECP(E, S, W, L, B, K)
+		hash.WriteECP(E, S, W, L, B, K)
 	}
 
-	hash.writeBytes(basename, message)
+	hash.WriteBytes(basename, message)
 
-	cDash := hash.sumToBIG()
+	cDash := hash.SumToBIG()
 
 	n, c, s := sign(r, cDash, sk, rng)
 
@@ -80,15 +83,15 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 	E.Sub(tmp)
 
 	// c' = H(E, S, W, L, B, K, basename, message)
-	hash := newHash()
+	hash := tools.NewHash()
 
 	if basename == nil {
-		hash.writeECP(E, S, W)
+		hash.WriteECP(E, S, W)
 	} else {
-		bHash := newHash()
-		bHash.writeBytes(basename)
+		bHash := tools.NewHash()
+		bHash.WriteBytes(basename)
 
-		B, _, err := bHash.hashToECP()
+		B, _, err := bHash.HashToECP()
 		if err != nil {
 			return err
 		}
@@ -98,20 +101,20 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 		tmp = proof.K.Mul(proof.SmallC)
 		L.Sub(tmp)
 
-		hash.writeECP(E, S, W, L, B, proof.K)
+		hash.WriteECP(E, S, W, L, B, proof.K)
 	}
 
-	hash.writeBytes(basename, message)
-	cDash := hash.sumToBIG()
+	hash.WriteBytes(basename, message)
+	cDash := hash.SumToBIG()
 
 	// c = H( n | c' )
-	cDashBuf := bigToBytes(cDash)
+	cDashBuf := mcl_utils.BigToBytes(cDash)
 
-	hash = newHash()
-	hash.writeBIG(proof.SmallN)
-	hash.writeBytes(cDashBuf)
+	hash = tools.NewHash()
+	hash.WriteBIG(proof.SmallN)
+	hash.WriteBytes(cDashBuf)
 
-	c := hash.sumToBIG()
+	c := hash.SumToBIG()
 
 	if FP256BN.Comp(proof.SmallC, c) != 0 {
 		return fmt.Errorf("c is not match: %v != %v", proof.SmallC, c)

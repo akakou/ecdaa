@@ -4,8 +4,12 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"fmt"
+	"mcl_utils"
 	"miracl/core"
 	"miracl/core/FP256BN"
+
+	"github.com/akakou/ecdaa/tools"
+	"github.com/akakou/ecdaa/tpm_utils"
 )
 
 type JoinSeed struct {
@@ -16,12 +20,12 @@ type JoinSeed struct {
 
 func GenJoinSeed(rng *core.RAND) (*JoinSeed, *FP256BN.ECP, error) {
 	var seed JoinSeed
-	basename := randomBytes(rng, 32)
+	basename := mcl_utils.RandomBytes(rng, 32)
 
-	hash := newHash()
-	hash.writeBytes(basename)
+	hash := tools.NewHash()
+	hash.WriteBytes(basename)
 
-	B, i, err := hash.hashToECP()
+	B, i, err := hash.HashToECP()
 
 	if err != nil {
 		return nil, nil, err
@@ -55,12 +59,12 @@ type JoinRequestTPM struct {
  */
 func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, error) {
 	/* create key and get public key */
-	sk := randomBig(rng)
+	sk := mcl_utils.RandomBig(rng)
 
 	/* set zero buffers to P1 */
-	hash := newHash()
-	hash.writeBytes(seed.S2)
-	bX := hash.sumToBIG()
+	hash := tools.NewHash()
+	hash.WriteBytes(seed.S2)
+	bX := hash.SumToBIG()
 
 	B := FP256BN.NewECPbigs(bX, seed.Y2)
 	// get result (Q)
@@ -76,7 +80,7 @@ func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, err
 	return &req, sk, nil
 }
 
-func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTPM, *KeyHandles, error) {
+func GenJoinReqWithTPM(seed *JoinSeed, tpm *tpm_utils.TPM, rng *core.RAND) (*JoinRequestTPM, *KeyHandles, error) {
 	/* create key and get public key */
 	handle, ekHandle, srkHandle, _, err := tpm.CreateKey()
 
@@ -84,9 +88,9 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTP
 		return nil, nil, err
 	}
 
-	hash := newHash()
-	hash.writeBytes(seed.S2)
-	bX := hash.sumToBIG()
+	hash := tools.NewHash()
+	hash.WriteBytes(seed.S2)
+	bX := hash.SumToBIG()
 
 	B := FP256BN.NewECPbigs(bX, seed.Y2)
 
@@ -98,12 +102,12 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTP
 	}
 
 	/* calc hash c2 = H( U1 | P1 | Q | m ) */
-	hash = newHash()
-	hash.writeECP(E, B, K)
-	c2 := hash.sumToBIG()
+	hash = tools.NewHash()
+	hash.WriteECP(E, B, K)
+	c2 := hash.SumToBIG()
 
 	/* sign and get s1, n */
-	c2Buf := bigToBytes(c2)
+	c2Buf := mcl_utils.BigToBytes(c2)
 
 	_, s1, n, err := (*tpm).Sign(c2Buf[:], comRsp.Counter, handle)
 
@@ -112,10 +116,10 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *TPM, rng *core.RAND) (*JoinRequestTP
 	}
 
 	/* calc hash c1 = H( n | c2 ) */
-	hash = newHash()
-	hash.writeBIG(n)
-	hash.writeBytes(c2Buf[:])
-	c1 := hash.sumToBIG()
+	hash = tools.NewHash()
+	hash.WriteBIG(n)
+	hash.WriteBytes(c2Buf[:])
+	c1 := hash.SumToBIG()
 
 	EKCert, err := (*tpm).ReadEKCert()
 

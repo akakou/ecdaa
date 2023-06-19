@@ -1,9 +1,10 @@
-package ecdaa
+package tools
 
 import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
+	"mcl_utils"
 	"miracl/core/FP256BN"
 	"reflect"
 )
@@ -12,38 +13,38 @@ type Hash struct {
 	B [][]byte
 }
 
-func newHash() Hash {
+func NewHash() Hash {
 	return Hash{}
 }
 
-func (h *Hash) writeECP(n ...*FP256BN.ECP) {
+func (h *Hash) WriteECP(n ...*FP256BN.ECP) {
 	for _, v := range n {
-		buf := ecpToBytes(v)
+		buf := mcl_utils.EcpToBytes(v)
 		h.B = append(h.B, buf)
 	}
 }
 
-func (h *Hash) writeECP2(n ...*FP256BN.ECP2) {
+func (h *Hash) WriteECP2(n ...*FP256BN.ECP2) {
 	for _, v := range n {
-		buf := ecp2ToBytes(v)
+		buf := mcl_utils.Ecp2ToBytes(v)
 		h.B = append(h.B, buf[:])
 	}
 }
 
-func (h *Hash) writeBIG(n ...*FP256BN.BIG) {
+func (h *Hash) WriteBIG(n ...*FP256BN.BIG) {
 	for _, v := range n {
-		buf := bigToBytes(v)
+		buf := mcl_utils.BigToBytes(v)
 		h.B = append(h.B, buf)
 	}
 }
 
-func (h *Hash) writeBytes(n ...[]byte) {
+func (h *Hash) WriteBytes(n ...[]byte) {
 	for _, v := range n {
 		h.B = append(h.B, v)
 	}
 }
 
-func (h *Hash) sumToBytes() []byte {
+func (h *Hash) SumToBytes() []byte {
 	hash := sha256.New()
 
 	for _, v := range h.B {
@@ -54,21 +55,21 @@ func (h *Hash) sumToBytes() []byte {
 	return retHash
 }
 
-func (h *Hash) sumToBIG() *FP256BN.BIG {
-	retHash := h.sumToBytes()
+func (h *Hash) SumToBIG() *FP256BN.BIG {
+	retHash := h.SumToBytes()
 	resBIG := FP256BN.FromBytes(retHash)
-	resBIG.Mod(p())
+	resBIG.Mod(mcl_utils.P())
 
 	return resBIG
 }
 
-func (baseHash *Hash) hashToECP() (*FP256BN.ECP, uint32, error) {
+func (baseHash *Hash) HashToECP() (*FP256BN.ECP, uint32, error) {
 	var i uint32
 
 	base := baseHash.B
 
 	for i = 0; i <= 232; i++ {
-		hash := newHash()
+		hash := NewHash()
 		// This process corresponds to BigNumberToB.
 		// Compute BigNumberToB(i,4) on FIDO's spec indicated
 		// that it should continue to find the number which
@@ -78,7 +79,7 @@ func (baseHash *Hash) hashToECP() (*FP256BN.ECP, uint32, error) {
 
 		hash.B = append([][]byte{numBuf}, base...)
 
-		x := hash.sumToBIG()
+		x := hash.SumToBIG()
 
 		ecp := FP256BN.NewECPbig(x)
 		ecp = ecp.Mul(FP256BN.NewBIGint(FP256BN.CURVE_Cof_I))
@@ -91,7 +92,7 @@ func (baseHash *Hash) hashToECP() (*FP256BN.ECP, uint32, error) {
 	return nil, 0, fmt.Errorf("error: Hashing failed")
 }
 
-func diffHash(a Hash, b Hash) error {
+func DiffHash(a Hash, b Hash) error {
 	result := ""
 
 	if len(a.B) != len(b.B) {

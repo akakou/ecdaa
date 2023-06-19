@@ -1,14 +1,17 @@
-package ecdaa
+package tpm_utils
 
 import (
 	"crypto/x509"
 	"fmt"
+	"mcl_utils"
 	"miracl/core/FP256BN"
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
 	// "github.com/google/go-tpm/tpm2/transport/simulator"
 )
+
+const TPM_PATH = "/dev/tpm0"
 
 func ekPolicy(t transport.TPM, handle tpm2.TPMISHPolicy, nonceTPM tpm2.TPM2BNonce) error {
 	cmd := tpm2.PolicySecret{
@@ -283,8 +286,8 @@ func (tpm *TPM) ReadEKCert() (*x509.Certificate, error) {
 
 func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1_ECP *FP256BN.ECP, S2_bytes []byte, P2 *FP256BN.ECP) (*tpm2.CommitResponse, *FP256BN.ECP, *FP256BN.ECP, *FP256BN.ECP, error) {
 	/* set zero buffers to P1 */
-	xBuf := bigToBytes(P1_ECP.GetX())
-	yBuf := bigToBytes(P1_ECP.GetY())
+	xBuf := mcl_utils.BigToBytes(P1_ECP.GetX())
+	yBuf := mcl_utils.BigToBytes(P1_ECP.GetY())
 
 	P1 := tpm2.TPMSECCPoint{
 		X: tpm2.TPM2BECCParameter{
@@ -301,7 +304,7 @@ func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1_ECP *FP256BN.ECP, S2_bytes []
 	}
 
 	Y2 := tpm2.TPM2BECCParameter{
-		Buffer: bigToBytes(P2.GetY()),
+		Buffer: mcl_utils.BigToBytes(P2.GetY()),
 	}
 
 	commit := tpm2.Commit{

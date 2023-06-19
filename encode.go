@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/gob"
 	"fmt"
+	"mcl_utils"
 	"miracl/core/FP256BN"
 )
 
@@ -34,8 +35,8 @@ type MiddleEncodedISK struct {
 func (isk *ISK) Encode() ([]byte, error) {
 	var mid MiddleEncodedISK
 
-	mid.X = bigToBytes(isk.X)
-	mid.Y = bigToBytes(isk.Y)
+	mid.X = mcl_utils.BigToBytes(isk.X)
+	mid.Y = mcl_utils.BigToBytes(isk.Y)
 
 	return Encode(&mid)
 }
@@ -66,11 +67,11 @@ type MiddleEncodedIPK struct {
 func (ipk *IPK) Encode() ([]byte, error) {
 	var mid MiddleEncodedIPK
 
-	mid.X = ecp2ToBytes(ipk.X)
-	mid.Y = ecp2ToBytes(ipk.Y)
-	mid.C = bigToBytes(ipk.C)
-	mid.SX = bigToBytes(ipk.SX)
-	mid.SY = bigToBytes(ipk.SY)
+	mid.X = mcl_utils.Ecp2ToBytes(ipk.X)
+	mid.Y = mcl_utils.Ecp2ToBytes(ipk.Y)
+	mid.C = mcl_utils.BigToBytes(ipk.C)
+	mid.SX = mcl_utils.BigToBytes(ipk.SX)
+	mid.SY = mcl_utils.BigToBytes(ipk.SY)
 
 	return Encode(mid)
 }
@@ -103,10 +104,10 @@ type MiddleEncodedCredential struct {
 func (cred *Credential) Encode() ([]byte, error) {
 	var mid MiddleEncodedCredential
 
-	mid.A = ecpToBytes(cred.A)
-	mid.B = ecpToBytes(cred.B)
-	mid.C = ecpToBytes(cred.C)
-	mid.D = ecpToBytes(cred.D)
+	mid.A = mcl_utils.EcpToBytes(cred.A)
+	mid.B = mcl_utils.EcpToBytes(cred.B)
+	mid.C = mcl_utils.EcpToBytes(cred.C)
+	mid.D = mcl_utils.EcpToBytes(cred.D)
 
 	return Encode(mid)
 }
@@ -137,10 +138,10 @@ type MiddleEncodedProof struct {
 func (proof *SchnorrProof) Encode() ([]byte, error) {
 	var mid MiddleEncodedProof
 
-	mid.SmallC = bigToBytes(proof.SmallC)
-	mid.SmallN = bigToBytes(proof.SmallN)
-	mid.SmallS = bigToBytes(proof.SmallS)
-	mid.K = ecpToBytes(proof.K)
+	mid.SmallC = mcl_utils.BigToBytes(proof.SmallC)
+	mid.SmallN = mcl_utils.BigToBytes(proof.SmallN)
+	mid.SmallS = mcl_utils.BigToBytes(proof.SmallS)
+	mid.K = mcl_utils.EcpToBytes(proof.K)
 
 	return Encode(mid)
 }
@@ -223,7 +224,7 @@ func (seeds *JoinSeed) Encode() ([]byte, error) {
 	var mid MiddleEncodedJoinSeed
 	mid.Basename = seeds.Basename
 	mid.S2 = seeds.S2
-	mid.Y2 = bigToBytes(seeds.Y2)
+	mid.Y2 = mcl_utils.BigToBytes(seeds.Y2)
 
 	return Encode(mid)
 }
@@ -253,7 +254,7 @@ func (request *JoinRequest) Encode() ([]byte, error) {
 	var err error
 	var mid MiddleEncodedJoinRequest
 
-	mid.Q = ecpToBytes(request.Q)
+	mid.Q = mcl_utils.EcpToBytes(request.Q)
 	mid.Proof, err = request.Proof.Encode()
 
 	if err != nil {
@@ -354,7 +355,7 @@ func EncodeRevocationList(list RevocationList) [][]byte {
 	var result [][]byte
 
 	for _, sk := range list {
-		encoded := bigToBytes(sk)
+		encoded := mcl_utils.BigToBytes(sk)
 		result = append(result, encoded)
 	}
 

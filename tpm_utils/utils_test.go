@@ -1,4 +1,4 @@
-package ecdaa
+package tpm_utils
 
 import (
 	"reflect"
@@ -10,12 +10,12 @@ func TestEncDecCred(t *testing.T) {
 	secret := []byte("0123456789abcdef")
 	iv := []byte("0123456789abcdef")
 
-	encA, encC, err := encCredAES(msg, msg, secret, iv)
+	encA, encC, err := EncCredAES(msg, msg, secret, iv)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 
-	decA, decC, err := decCredAES(encA, encC, secret, iv)
+	decA, decC, err := DecCredAES(encA, encC, secret, iv)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}

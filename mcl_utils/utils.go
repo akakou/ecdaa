@@ -1,12 +1,10 @@
-package ecdaa
+package mcl_utils
 
 import (
 	"crypto/rand"
 	"math/big"
 	"miracl/core"
 	"miracl/core/FP256BN"
-
-	"github.com/google/go-tpm/tpm2"
 )
 
 /**
@@ -26,46 +24,39 @@ func InitRandom() *core.RAND {
 	return rng
 }
 
-func parseECPFromTPMFmt(tpmEcc *tpm2.TPMSECCPoint) *FP256BN.ECP {
-	x := FP256BN.FromBytes(tpmEcc.X.Buffer)
-	y := FP256BN.FromBytes(tpmEcc.Y.Buffer)
-
-	return FP256BN.NewECPbigs(x, y)
-}
-
-func bigToBytes(big *FP256BN.BIG) []byte {
+func BigToBytes(big *FP256BN.BIG) []byte {
 	var buf [FP256BN.MODBYTES]byte
 	big.ToBytes(buf[:])
 	return buf[:]
 }
 
-func randomBig(rng *core.RAND) *FP256BN.BIG {
+func RandomBig(rng *core.RAND) *FP256BN.BIG {
 	rand := FP256BN.Random(rng)
 
-	buf := bigToBytes(rand)
+	buf := BigToBytes(rand)
 	big := FP256BN.FromBytes(buf)
 
 	return big
 }
 
-func randomBytes(rng *core.RAND, size int) []byte {
+func RandomBytes(rng *core.RAND, size int) []byte {
 	rand := FP256BN.Random(rng)
-	buf := bigToBytes(rand)
+	buf := BigToBytes(rand)
 	return buf[:size]
 }
 
-func randomECP(rng *core.RAND) *FP256BN.ECP {
-	r := randomBytes(rng, int(FP256BN.MODBYTES))
+func RandomECP(rng *core.RAND) *FP256BN.ECP {
+	r := RandomBytes(rng, int(FP256BN.MODBYTES))
 	return FP256BN.ECP_mapit(r)
 }
 
-func ecpToBytes(ecp *FP256BN.ECP) []byte {
+func EcpToBytes(ecp *FP256BN.ECP) []byte {
 	var buf [int(FP256BN.MODBYTES) + 1]byte
 	ecp.ToBytes(buf[:], true)
 	return buf[:]
 }
 
-func ecp2ToBytes(ecp2 *FP256BN.ECP2) []byte {
+func Ecp2ToBytes(ecp2 *FP256BN.ECP2) []byte {
 	var buf [2*int(FP256BN.MODBYTES) + 1]byte
 	ecp2.ToBytes(buf[:], true)
 	return buf[:]

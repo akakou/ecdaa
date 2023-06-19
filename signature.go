@@ -3,16 +3,19 @@ package ecdaa
 import (
 	"encoding/binary"
 	"fmt"
+	"mcl_utils"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
+	"github.com/akakou/ecdaa/tools"
+	"github.com/akakou/ecdaa/tpm_utils"
 	"github.com/google/go-tpm/tpm2"
 )
 
 type RevocationList = []*FP256BN.BIG
 
 type Member struct {
-	Tpm        *TPM
+	Tpm        *tpm_utils.TPM
 	KeyHandles *KeyHandles
 }
 
@@ -22,7 +25,7 @@ type KeyHandles struct {
 	Handle    *tpm2.AuthHandle
 }
 
-func NewMember(tpm *TPM) Member {
+func NewMember(tpm *tpm_utils.TPM) Member {
 	var member = Member{
 		Tpm: tpm,
 	}
@@ -35,14 +38,47 @@ type Signature struct {
 	RandomizedCred *Credential
 }
 
-func Sign(
+type SWSigner struct {
+	cred *Credential
+	sk   *FP256BN.BIG
+}
+
+type TPMSigner struct {
+	cred   *Credential
+	handle *KeyHandles
+	tpm    *tpm_utils.TPM
+}
+
+func NewSWSigner(cred *Credential, sk *FP256BN.BIG) SWSigner {
+	var signer = SWSigner{
+		cred: cred,
+		sk:   sk,
+	}
+
+	return signer
+}
+
+func NewTPMSigner(cred *Credential, handle *KeyHandles, tpm *tpm_utils.TPM) TPMSigner {
+	var signer = TPMSigner{
+		cred:   cred,
+		handle: handle,
+		tpm:    tpm,
+	}
+
+	return signer
+}
+
+type Signer interface {
+	Sign(message, basename []byte, rng *core.RAND) (*Signature, error)
+}
+
+func (signer SWSigner) Sign(
 	message,
 	basename []byte,
-	sk *FP256BN.BIG, cred *Credential,
 	rng *core.RAND) (*Signature, error) {
 
-	randomizedCred := RandomizeCred(cred, rng)
-	proof := proveSchnorr(message, basename, sk, randomizedCred.B, randomizedCred.D, rng)
+	randomizedCred := RandomizeCred(signer.cred, rng)
+	proof := proveSchnorr(message, basename, signer.sk, randomizedCred.B, randomizedCred.D, rng)
 
 	return &Signature{
 		Proof:          proof,
@@ -50,11 +86,11 @@ func Sign(
 	}, nil
 }
 
-func SignTPM(message, basename []byte, cred *Credential, handle *KeyHandles, tpm *TPM, rng *core.RAND) (*Signature, error) {
-	hash := newHash()
-	hash.writeBytes(basename)
+func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signature, error) {
+	hash := tools.NewHash()
+	hash.WriteBytes(basename)
 
-	B, i, err := hash.hashToECP()
+	B, i, err := hash.HashToECP()
 
 	if err != nil {
 		return nil, err
@@ -65,38 +101,38 @@ func SignTPM(message, basename []byte, cred *Credential, handle *KeyHandles, tpm
 
 	s2Buf := append(numBuf, basename[:]...)
 
-	randomizedCred := RandomizeCred(cred, rng)
+	randomizedCred := RandomizeCred(signer.cred, rng)
 	S := randomizedCred.B
 	W := randomizedCred.D
 
 	/* run commit and get U */
-	comRsp, E, L, K, err := (*tpm).Commit(handle.Handle, S, s2Buf, B)
+	comRsp, E, L, K, err := (*signer.tpm).Commit(signer.handle.Handle, S, s2Buf, B)
 
 	if err != nil {
-		return nil, fmt.Errorf("commit error: %v\n", err)
+		return nil, fmt.Errorf("commit error: %v", err)
 	}
 
 	// c2 = H(E, S, W, L, B, K,basename, message)
-	hash = newHash()
-	hash.writeECP(E, S, W, L, B, K)
-	hash.writeBytes(basename, message)
+	hash = tools.NewHash()
+	hash.WriteECP(E, S, W, L, B, K)
+	hash.WriteBytes(basename, message)
 
-	c2 := hash.sumToBIG()
+	c2 := hash.SumToBIG()
 
 	/* sign and get s1, n */
-	c2Buf := bigToBytes(c2)
+	c2Buf := mcl_utils.BigToBytes(c2)
 
-	_, s, n, err := (*tpm).Sign(c2Buf, comRsp.Counter, handle.Handle)
+	_, s, n, err := (*signer.tpm).Sign(c2Buf, comRsp.Counter, signer.handle.Handle)
 
 	if err != nil {
-		return nil, fmt.Errorf("sign error: %v\n", err)
+		return nil, fmt.Errorf("sign error: %v", err)
 	}
 
 	/* calc hash c = H( n | c2 ) */
-	hash = newHash()
-	hash.writeBIG(n)
-	hash.writeBytes(c2Buf)
-	c := hash.sumToBIG()
+	hash = tools.NewHash()
+	hash.WriteBIG(n)
+	hash.WriteBytes(c2Buf)
+	c := hash.SumToBIG()
 
 	proof := SchnorrProof{
 		SmallC: c,
@@ -137,25 +173,3 @@ func Verify(message, basename []byte, signature *Signature, ipk *IPK, rl Revocat
 
 	return nil
 }
-
-//   // E = S^s . W^-c
-//     // ----------------
-//     // S^s . W^-c
-//     //     = S^(r + c . sk) . W^-c
-//     //     = S^(r + c . sk) . W^-(c)
-//     //     = B^l .(r + c . sk) . Q^-(c . r . l)
-//     //     = B  .(r + c . sk) . Q ^ - (c . r )
-//     //     = B ^ sk
-//     let mut e = s.mul(&self.s);
-//     let tmp = w.mul(&self.c);
-//     e.sub(&tmp);
-
-//     // L = B^s - K^c
-//     // ----------
-//     // B^s - K^c
-//     //     = B^(r + c . sk) - B^(c . sk)
-//     //     = B^r
-//     //     = L
-//     let mut l = hash.mul(&self.s);
-//     let tmp = self.k.mul(&self.c);
-//     l.sub(&tmp);
