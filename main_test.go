@@ -1,9 +1,10 @@
 package ecdaa
 
 import (
-	"mcl_utils"
 	"miracl/core"
 	"testing"
+
+	"github.com/akakou/mcl_utils"
 
 	"github.com/akakou/ecdaa/tpm_utils"
 )

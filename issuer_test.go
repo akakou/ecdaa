@@ -1,8 +1,9 @@
 package ecdaa
 
 import (
-	"mcl_utils"
 	"testing"
+
+	"github.com/akakou/mcl_utils"
 )
 
 func TestNewIssuer(t *testing.T) {

@@ -5,8 +5,9 @@ import (
 	"crypto/x509"
 	"encoding/gob"
 	"fmt"
-	"mcl_utils"
 	"miracl/core/FP256BN"
+
+	"github.com/akakou/mcl_utils"
 )
 
 func Encode[T any](data T) ([]byte, error) {
