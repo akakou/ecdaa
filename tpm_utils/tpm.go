@@ -3,8 +3,9 @@ package tpm_utils
 import (
 	"crypto/x509"
 	"fmt"
-	"mcl_utils"
 	"miracl/core/FP256BN"
+
+	"github.com/akakou/mcl_utils"
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"

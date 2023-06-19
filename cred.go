@@ -3,11 +3,11 @@ package ecdaa
 import (
 	"crypto/rsa"
 	"fmt"
-	"mcl_utils"
 	"miracl/core"
 	"miracl/core/FP256BN"
 
 	"github.com/akakou/ecdaa/tpm_utils"
+	"github.com/akakou/mcl_utils"
 	legacy "github.com/google/go-tpm/legacy/tpm2"
 )
 

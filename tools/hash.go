@@ -4,9 +4,10 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"mcl_utils"
 	"miracl/core/FP256BN"
 	"reflect"
+
+	"github.com/akakou/mcl_utils"
 )
 
 type Hash struct {
