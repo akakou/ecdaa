@@ -1,4 +1,4 @@
-module example.com/m/v2
+module github.com/akakou/mcl_utils
 
 go 1.19
 

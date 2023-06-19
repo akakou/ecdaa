@@ -4,9 +4,10 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"fmt"
-	"mcl_utils"
 	"miracl/core"
 	"miracl/core/FP256BN"
+
+	"github.com/akakou/mcl_utils"
 
 	"github.com/akakou/ecdaa/tools"
 	"github.com/akakou/ecdaa/tpm_utils"
