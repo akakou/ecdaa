@@ -1,107 +1,39 @@
 package ecdaa
 
 import (
-	"miracl/core"
 	"testing"
 
-	"github.com/akakou/mcl_utils"
-
 	"github.com/akakou/ecdaa/tpm_utils"
+	"github.com/akakou/mcl_utils"
 )
-
-func testIssuer(t *testing.T, rng *core.RAND) *Issuer {
-	issuer := RandomIssuer(rng)
-
-	err := VerifyIPK(&issuer.Ipk)
-
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
-	return &issuer
-}
 
 func TestTPM(t *testing.T) {
 	rng := mcl_utils.InitRandom()
-	issuer := testIssuer(t, rng)
-
 	password := []byte("piyo")
 
 	tpm, err := tpm_utils.OpenTPM(password, tpm_utils.TPM_PATH)
 	if err != nil {
-		t.Errorf("%v", err)
+		t.Fatalf("%v", err)
 	}
 	defer tpm.Close()
 
-	seed, issuerB, err := GenJoinSeed(rng)
+	issuer, signer, err := ExampleTPMInitialize(tpm, rng)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
 
-	req, handle, err := GenJoinReqWithTPM(seed, tpm, rng)
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
-	cipherCred, _, err := issuer.MakeCredEncrypted(req, issuerB, rng)
-
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
-	cred, err := ActivateCredential(cipherCred, issuerB, req.JoinReq.Q, &issuer.Ipk, handle, tpm)
-
-	if err != nil {
-		t.Fatalf("activate credential: %v", err)
-	}
-
-	signer := NewTPMSigner(cred, handle, tpm)
-	testSignAndVerify(t, &signer, issuer)
+	testSignAndVerify(t, signer, issuer)
 }
 
 func TestSW(t *testing.T) {
 	rng := mcl_utils.InitRandom()
-	issuer := testIssuer(t, rng)
 
-	seed, issuerB, err := GenJoinSeed(rng)
-
+	issuer, signer, err := ExampleInitialize(rng)
 	if err != nil {
-		t.Fatalf("%v", err)
+		t.Errorf("%v", err)
 	}
 
-	req, sk, err := GenJoinReq(seed, rng)
-
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
-	err = VerifyJoinReq(req, seed, issuerB)
-
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
-	cred, err := issuer.MakeCred(req, issuerB, rng)
-
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
-	err = VerifyCred(cred, &issuer.Ipk)
-
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
-	randCred := RandomizeCred(cred, rng)
-	err = VerifyCred(randCred, &issuer.Ipk)
-
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-
-	signer := NewSWSigner(cred, sk)
-	testSignAndVerify(t, &signer, issuer)
+	testSignAndVerify(t, signer, issuer)
 }
 
 func testSignAndVerify(t *testing.T, signer Signer, issuer *Issuer) {

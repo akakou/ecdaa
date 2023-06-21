@@ -10,23 +10,6 @@ import (
 	"github.com/akakou/mcl_utils"
 )
 
-func setupSWSigner(rng *core.RAND, b *testing.B) (*ecdaa.SWSigner, *ecdaa.IPK) {
-	issuer := testIssuer(b, rng)
-
-	seed, issuerB, err := ecdaa.GenJoinSeed(rng)
-	checkError(err, b)
-
-	req, sk, err := ecdaa.GenJoinReq(seed, rng)
-	checkError(err, b)
-
-	cred, err := issuer.MakeCred(req, issuerB, rng)
-	checkError(err, b)
-
-	signer := ecdaa.NewSWSigner(cred, sk)
-
-	return &signer, &issuer.Ipk
-}
-
 func setupSignatures(bsn []byte, signer ecdaa.Signer, rng *core.RAND, b *testing.B) []byte {
 	signature, err := signer.Sign([]byte{}, bsn, rng)
 	checkError(err, b)
@@ -49,7 +32,9 @@ func benchmarkVerify(count int, b *testing.B) {
 	bsn, err := hex.DecodeString("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
 	checkError(err, b)
 
-	signer, ipk := setupSWSigner(rng, b)
+	issuer, signer, err := ecdaa.ExampleInitialize(rng)
+	checkError(err, b)
+
 	signatureBuf := setupSignatures(bsn, signer, rng, b)
 
 	tag := fmt.Sprintf("verify-%v", count)
@@ -59,7 +44,7 @@ func benchmarkVerify(count int, b *testing.B) {
 			var signature ecdaa.Signature
 
 			signature.Decode(signatureBuf)
-			err := ecdaa.Verify([]byte{}, bsn, &signature, ipk, rl)
+			err := ecdaa.Verify([]byte{}, bsn, &signature, &issuer.Ipk, rl)
 
 			if err != nil {
 				b.Fatalf("%v", err)
