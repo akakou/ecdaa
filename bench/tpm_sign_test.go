@@ -20,7 +20,7 @@ func BenchmarkSignTPM(b *testing.B) {
 	_, signer, err := ecdaa.ExampleTPMInitialize(tpm, rng)
 	checkError(err, b)
 
-	basename, err := hex.DecodeString("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+	basename, err := hex.DecodeString("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b98242cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7")
 	checkError(err, b)
 
 	b.Run("tpm_sign", func(b *testing.B) {
