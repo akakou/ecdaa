@@ -29,7 +29,7 @@ func benchmarkVerify(count int, b *testing.B) {
 		rl = append(rl, sk)
 	}
 
-	bsn, err := hex.DecodeString("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
+	bsn, err := hex.DecodeString("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b98242cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7")
 	checkError(err, b)
 
 	issuer, signer, err := ecdaa.ExampleInitialize(rng)
@@ -39,11 +39,12 @@ func benchmarkVerify(count int, b *testing.B) {
 
 	tag := fmt.Sprintf("verify-%v", count)
 
+	var signature ecdaa.Signature
+	signature.Decode(signatureBuf)
+
 	b.Run(tag, func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			var signature ecdaa.Signature
 
-			signature.Decode(signatureBuf)
 			err := ecdaa.Verify([]byte{}, bsn, &signature, &issuer.Ipk, rl)
 
 			if err != nil {
