@@ -3,7 +3,7 @@ package ecdaa
 import (
 	"miracl/core"
 
-	"github.com/akakou/ecdaa/tpm_utils"
+	"github.com/anonymous/ecdaa/tpm_utils"
 )
 
 func testIssuer(rng *core.RAND) (*Issuer, error) {

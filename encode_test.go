@@ -6,9 +6,9 @@ import (
 	"miracl/core/FP256BN"
 	"testing"
 
-	"github.com/akakou/mcl_utils"
+	"github.com/anonymous/mcl_utils"
 
-	"github.com/akakou/ecdaa/tpm_utils"
+	"github.com/anonymous/ecdaa/tpm_utils"
 )
 
 func TestEncodeDecodeIPK(t *testing.T) {

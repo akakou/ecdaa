@@ -7,10 +7,10 @@ import (
 	"miracl/core"
 	"miracl/core/FP256BN"
 
-	"github.com/akakou/mcl_utils"
+	"github.com/anonymous/mcl_utils"
 
-	"github.com/akakou/ecdaa/tools"
-	"github.com/akakou/ecdaa/tpm_utils"
+	"github.com/anonymous/ecdaa/tools"
+	"github.com/anonymous/ecdaa/tpm_utils"
 )
 
 type JoinSeed struct {

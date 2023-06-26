@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"miracl/core/FP256BN"
 
-	"github.com/akakou/mcl_utils"
+	"github.com/anonymous/mcl_utils"
 )
 
 func Encode[T any](data T) ([]byte, error) {

@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/akakou/ecdaa"
-	"github.com/akakou/ecdaa/tpm_utils"
-	"github.com/akakou/mcl_utils"
+	"github.com/anonymous/ecdaa"
+	"github.com/anonymous/ecdaa/tpm_utils"
+	"github.com/anonymous/mcl_utils"
 )
 
 var password = []byte("piyo")

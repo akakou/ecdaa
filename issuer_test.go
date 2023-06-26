@@ -3,7 +3,7 @@ package ecdaa
 import (
 	"testing"
 
-	"github.com/akakou/mcl_utils"
+	"github.com/anonymous/mcl_utils"
 )
 
 func TestNewIssuer(t *testing.T) {

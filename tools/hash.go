@@ -7,7 +7,7 @@ import (
 	"miracl/core/FP256BN"
 	"reflect"
 
-	"github.com/akakou/mcl_utils"
+	"github.com/anonymous/mcl_utils"
 )
 
 type Hash struct {

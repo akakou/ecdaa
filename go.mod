@@ -1,9 +1,9 @@
-module github.com/akakou/ecdaa
+module github.com/anonymous/ecdaa
 
 go 1.18
 
 require (
-	github.com/akakou/mcl_utils v0.0.0
+	github.com/anonymous/mcl_utils v0.0.0
 	github.com/google/go-tpm v0.3.3
 	miracl v0.0.0
 )
@@ -17,6 +17,6 @@ require (
 
 replace miracl => ./thirdparty/miracl
 
-replace github.com/akakou/mcl_utils => ./mcl_utils
+replace github.com/anonymous/mcl_utils => ./mcl_utils
 
 replace github.com/google/go-tpm => ./thirdparty/go-tpm

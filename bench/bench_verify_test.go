@@ -6,8 +6,8 @@ import (
 	"miracl/core"
 	"testing"
 
-	"github.com/akakou/ecdaa"
-	"github.com/akakou/mcl_utils"
+	"github.com/anonymous/ecdaa"
+	"github.com/anonymous/mcl_utils"
 )
 
 func setupSignatures(bsn []byte, signer ecdaa.Signer, rng *core.RAND, b *testing.B) []byte {

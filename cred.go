@@ -6,8 +6,8 @@ import (
 	"miracl/core"
 	"miracl/core/FP256BN"
 
-	"github.com/akakou/ecdaa/tpm_utils"
-	"github.com/akakou/mcl_utils"
+	"github.com/anonymous/ecdaa/tpm_utils"
+	"github.com/anonymous/mcl_utils"
 	legacy "github.com/google/go-tpm/legacy/tpm2"
 )
 

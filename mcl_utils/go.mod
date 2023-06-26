@@ -1,4 +1,4 @@
-module github.com/akakou/mcl_utils
+module github.com/anonymous/mcl_utils
 
 go 1.19
 

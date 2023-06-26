@@ -5,7 +5,7 @@ all: ./go-tpm ./miracl ./core
 	echo "Done"
 
 ./go-tpm:
-	git clone https://github.com/akakou/go-tpm \
+	git clone https://github.com/anonymous/go-tpm \
 	&& cd go-tpm && git checkout ecdaa
 
 ./miracl: ./core
