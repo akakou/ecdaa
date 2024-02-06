@@ -3,7 +3,8 @@ package tpm_utils
 import (
 	"crypto/x509"
 	"fmt"
-	"miracl/core/FP256BN"
+
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 
 	"github.com/akakou/mcl_utils"
 

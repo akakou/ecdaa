@@ -1,7 +1,7 @@
 package ecdaa
 
 import (
-	"miracl/core"
+	"github.com/akakou-fork/amcl-go/miracl/core"
 
 	"github.com/akakou/ecdaa/tpm_utils"
 )

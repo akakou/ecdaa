@@ -1,6 +1,6 @@
 package mcl_utils
 
-import "miracl/core/FP256BN"
+import "github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 
 /**
  * Random seed size

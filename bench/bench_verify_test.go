@@ -3,9 +3,9 @@ package ecdaa_bench
 import (
 	"encoding/hex"
 	"fmt"
-	"miracl/core"
 	"testing"
 
+	"github.com/akakou-fork/amcl-go/amcl/core"
 	"github.com/akakou/ecdaa"
 	"github.com/akakou/mcl_utils"
 )
