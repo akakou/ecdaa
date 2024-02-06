@@ -5,7 +5,8 @@ import (
 	"crypto/x509"
 	"encoding/gob"
 	"fmt"
-	"miracl/core/FP256BN"
+
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 
 	"github.com/akakou/mcl_utils"
 )

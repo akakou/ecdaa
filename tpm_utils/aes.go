@@ -4,7 +4,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"fmt"
-	"miracl/core/FP256BN"
+
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 )
 
 func EncCredAES(srcA, srcC, secret, iv []byte) ([]byte, []byte, error) {

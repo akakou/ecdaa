@@ -2,9 +2,11 @@ package ecdaa
 
 import (
 	"bytes"
-	"miracl/core"
-	"miracl/core/FP256BN"
 	"testing"
+
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
+
+	"github.com/akakou-fork/amcl-go/miracl/core"
 
 	"github.com/akakou/mcl_utils"
 

@@ -10,7 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"miracl/core/FP256BN"
+
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 
 	legacy "github.com/google/go-tpm/legacy/tpm2"
 	"github.com/google/go-tpm/tpm2"
