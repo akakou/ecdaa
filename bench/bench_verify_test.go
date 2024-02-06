@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/akakou-fork/amcl-go/amcl/core"
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
+
+	"github.com/akakou-fork/amcl-go/miracl/core"
 	"github.com/akakou/ecdaa"
-	"github.com/akakou/mcl_utils"
 )
 
 func setupSignatures(bsn []byte, signer ecdaa.Signer, rng *core.RAND, b *testing.B) []byte {
@@ -21,11 +22,11 @@ func setupSignatures(bsn []byte, signer ecdaa.Signer, rng *core.RAND, b *testing
 }
 
 func benchmarkVerify(count int, b *testing.B) {
-	rng := mcl_utils.InitRandom()
+	rng := amcl_utils.InitRandom()
 
 	var rl = ecdaa.RevocationList{}
 	for i := 0; i < count; i++ {
-		sk := mcl_utils.RandomBig(rng)
+		sk := amcl_utils.RandomBig(rng)
 		rl = append(rl, sk)
 	}
 

@@ -4,9 +4,10 @@ import (
 	"encoding/hex"
 	"testing"
 
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
+
 	"github.com/akakou/ecdaa"
 	"github.com/akakou/ecdaa/tpm_utils"
-	"github.com/akakou/mcl_utils"
 )
 
 var password = []byte("piyo")
@@ -16,7 +17,7 @@ func BenchmarkSignTPM(b *testing.B) {
 	checkError(err, b)
 	defer tpm.Close()
 
-	rng := mcl_utils.InitRandom()
+	rng := amcl_utils.InitRandom()
 	_, signer, err := ecdaa.ExampleTPMInitialize(tpm, rng)
 	checkError(err, b)
 

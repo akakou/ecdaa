@@ -5,8 +5,7 @@ import (
 	"fmt"
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
-
-	"github.com/akakou/mcl_utils"
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 
 	"github.com/google/go-tpm/tpm2"
 	"github.com/google/go-tpm/tpm2/transport"
@@ -282,8 +281,8 @@ func (tpm *TPM) ReadEKCert() (*x509.Certificate, error) {
 
 func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1_ECP *FP256BN.ECP, S2_bytes []byte, P2 *FP256BN.ECP) (*tpm2.CommitResponse, *FP256BN.ECP, *FP256BN.ECP, *FP256BN.ECP, error) {
 	/* set zero buffers to P1 */
-	xBuf := mcl_utils.BigToBytes(P1_ECP.GetX())
-	yBuf := mcl_utils.BigToBytes(P1_ECP.GetY())
+	xBuf := amcl_utils.BigToBytes(P1_ECP.GetX())
+	yBuf := amcl_utils.BigToBytes(P1_ECP.GetY())
 
 	P1 := tpm2.TPMSECCPoint{
 		X: tpm2.TPM2BECCParameter{
@@ -300,7 +299,7 @@ func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1_ECP *FP256BN.ECP, S2_bytes []
 	}
 
 	Y2 := tpm2.TPM2BECCParameter{
-		Buffer: mcl_utils.BigToBytes(P2.GetY()),
+		Buffer: amcl_utils.BigToBytes(P2.GetY()),
 	}
 
 	commit := tpm2.Commit{

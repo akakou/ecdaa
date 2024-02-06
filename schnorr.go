@@ -6,8 +6,7 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core"
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
-
-	"github.com/akakou/mcl_utils"
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 
 	"github.com/akakou/ecdaa/tools"
 )
@@ -22,7 +21,7 @@ type SchnorrProof struct {
 type SchnorrProver struct{}
 
 func commit(sk *FP256BN.BIG, B, S *FP256BN.ECP, rng *core.RAND, calcK bool) (*FP256BN.BIG, *FP256BN.ECP, *FP256BN.ECP, *FP256BN.ECP) {
-	r := mcl_utils.RandomBig(rng)
+	r := amcl_utils.RandomBig(rng)
 
 	E := S.Mul(r)
 	L := B.Mul(r)
@@ -38,14 +37,14 @@ func commit(sk *FP256BN.BIG, B, S *FP256BN.ECP, rng *core.RAND, calcK bool) (*FP
 }
 
 func sign(r, cDash, sk *FP256BN.BIG, rng *core.RAND) (*FP256BN.BIG, *FP256BN.BIG, *FP256BN.BIG) {
-	n := mcl_utils.RandomBig(rng)
+	n := amcl_utils.RandomBig(rng)
 
 	hash := tools.NewHash()
 	hash.WriteBIG(n, cDash)
 	c := hash.SumToBIG()
 
-	s := FP256BN.Modmul(c, sk, mcl_utils.P())
-	s = FP256BN.Modadd(r, s, mcl_utils.P())
+	s := FP256BN.Modmul(c, sk, amcl_utils.P())
+	s = FP256BN.Modadd(r, s, amcl_utils.P())
 
 	return n, c, s
 }
@@ -111,7 +110,7 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 	cDash := hash.SumToBIG()
 
 	// c = H( n | c' )
-	cDashBuf := mcl_utils.BigToBytes(cDash)
+	cDashBuf := amcl_utils.BigToBytes(cDash)
 
 	hash = tools.NewHash()
 	hash.WriteBIG(proof.SmallN)

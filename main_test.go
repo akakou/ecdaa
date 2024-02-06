@@ -3,12 +3,13 @@ package ecdaa
 import (
 	"testing"
 
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
+
 	"github.com/akakou/ecdaa/tpm_utils"
-	"github.com/akakou/mcl_utils"
 )
 
 func TestTPM(t *testing.T) {
-	rng := mcl_utils.InitRandom()
+	rng := amcl_utils.InitRandom()
 	password := []byte("piyo")
 
 	tpm, err := tpm_utils.OpenTPM(password, tpm_utils.TPM_PATH)
@@ -26,7 +27,7 @@ func TestTPM(t *testing.T) {
 }
 
 func TestSW(t *testing.T) {
-	rng := mcl_utils.InitRandom()
+	rng := amcl_utils.InitRandom()
 
 	issuer, signer, err := ExampleInitialize(rng)
 	if err != nil {
@@ -44,7 +45,7 @@ func testSignAndVerify(t *testing.T, signer Signer, issuer *Issuer) {
 	basename2 := []byte("fuga2")
 	incorrect_basename := []byte("fuga3")
 
-	rng := mcl_utils.InitRandom()
+	rng := amcl_utils.InitRandom()
 
 	signature, err := signer.Sign(message, basename, rng)
 

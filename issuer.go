@@ -5,8 +5,7 @@ import (
 
 	"github.com/akakou-fork/amcl-go/miracl/core"
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
-
-	"github.com/akakou/mcl_utils"
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 
 	"github.com/akakou/ecdaa/tools"
 )
@@ -27,8 +26,8 @@ func RandomISK(rng *core.RAND) ISK {
 	x := FP256BN.Random(rng)
 	y := FP256BN.Random(rng)
 
-	x.Mod(mcl_utils.P())
-	y.Mod(mcl_utils.P())
+	x.Mod(amcl_utils.P())
+	y.Mod(amcl_utils.P())
 
 	isk.X = x
 	isk.Y = y
@@ -60,35 +59,35 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	rX := FP256BN.Random(rng)
 	rY := FP256BN.Random(rng)
 
-	rX.Mod(mcl_utils.P())
-	rY.Mod(mcl_utils.P())
+	rX.Mod(amcl_utils.P())
+	rY.Mod(amcl_utils.P())
 
 	// calc X, Y
 	// X = g2^x
 	// Y = g2^y
-	X := mcl_utils.G2().Mul(x)
-	Y := mcl_utils.G2().Mul(y)
+	X := amcl_utils.G2().Mul(x)
+	Y := amcl_utils.G2().Mul(y)
 
 	// calc U_x, U_y
 	//     U_x = g2 ^ r_x
 	//     U_y = g2 ^ r_y
-	Ux := mcl_utils.G2().Mul(rX)
-	Uy := mcl_utils.G2().Mul(rY)
+	Ux := amcl_utils.G2().Mul(rX)
+	Uy := amcl_utils.G2().Mul(rY)
 
 	// calc `c = H(U_x | U_y | g2 | X | Y)`
 	hash := tools.NewHash()
-	hash.WriteECP2(Ux, Uy, mcl_utils.G2(), X, Y)
+	hash.WriteECP2(Ux, Uy, amcl_utils.G2(), X, Y)
 	c := hash.SumToBIG()
 
 	// calc s_x, s_y
 	//     s_x = r_x + cx
 	//     s_y = r_y + cy
 	// todo: mod p
-	sX := FP256BN.Modmul(c, x, mcl_utils.P())
-	sX = FP256BN.Modadd(rX, sX, mcl_utils.P())
+	sX := FP256BN.Modmul(c, x, amcl_utils.P())
+	sX = FP256BN.Modadd(rX, sX, amcl_utils.P())
 
-	sY := FP256BN.Modmul(y, c, mcl_utils.P())
-	sY = FP256BN.Modadd(rY, sY, mcl_utils.P())
+	sY := FP256BN.Modmul(y, c, amcl_utils.P())
+	sY = FP256BN.Modadd(rY, sY, amcl_utils.P())
 
 	// copy pointers to ipk
 	ipk.X = X
@@ -111,18 +110,18 @@ func VerifyIPK(ipk *IPK) error {
 	sY := ipk.SY
 
 	// calc U_x = g2^s_x * X^{-c}
-	Ux := mcl_utils.G2().Mul(sX)
+	Ux := amcl_utils.G2().Mul(sX)
 	tmp := X.Mul(c)
 	Ux.Sub(tmp)
 
 	// calc U_y = g2^s_y * Y^{-c}
-	Uy := mcl_utils.G2().Mul(sY)
+	Uy := amcl_utils.G2().Mul(sY)
 	tmp = Y.Mul(c)
 	Uy.Sub(tmp)
 
 	// calc `c' = H(U_x | U_y | g2 | X | Y)`
 	hash := tools.NewHash()
-	hash.WriteECP2(Ux, Uy, mcl_utils.G2(), X, Y)
+	hash.WriteECP2(Ux, Uy, amcl_utils.G2(), X, Y)
 	cDash := hash.SumToBIG()
 
 	if FP256BN.Comp(c, cDash) == 0 {

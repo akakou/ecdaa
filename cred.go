@@ -8,7 +8,7 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 
 	"github.com/akakou/ecdaa/tpm_utils"
-	"github.com/akakou/mcl_utils"
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 	legacy "github.com/google/go-tpm/legacy/tpm2"
 )
 
@@ -33,7 +33,7 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, B *FP256BN.ECP, rng *core.RAND)
 	var cred Credential
 
 	invY := FP256BN.NewBIGcopy(issuer.Isk.Y)
-	invY.Invmodp(mcl_utils.P())
+	invY.Invmodp(amcl_utils.P())
 
 	cred.A = B.Mul(invY)
 
@@ -51,8 +51,8 @@ func (issuer *Issuer) MakeCred(req *JoinRequest, B *FP256BN.ECP, rng *core.RAND)
 func (issuer *Issuer) MakeCredEncrypted(req *JoinRequestTPM, B *FP256BN.ECP, rng *core.RAND) (*CredentialCipher, *Credential, error) {
 	var credCipher CredentialCipher
 
-	secret := mcl_utils.RandomBytes(rng, 16)
-	iv := mcl_utils.RandomBytes(rng, 16)
+	secret := amcl_utils.RandomBytes(rng, 16)
+	iv := amcl_utils.RandomBytes(rng, 16)
 
 	cred, err := issuer.MakeCred(req.JoinReq, B, rng)
 
@@ -60,8 +60,8 @@ func (issuer *Issuer) MakeCredEncrypted(req *JoinRequestTPM, B *FP256BN.ECP, rng
 		return nil, nil, fmt.Errorf("enc cred: %v", err)
 	}
 
-	ABuf := mcl_utils.EcpToBytes(cred.A)
-	CBuf := mcl_utils.EcpToBytes(cred.C)
+	ABuf := amcl_utils.EcpToBytes(cred.A)
+	CBuf := amcl_utils.EcpToBytes(cred.C)
 
 	credCipher.A, credCipher.C, err = tpm_utils.EncCredAES(ABuf, CBuf, secret, iv)
 
@@ -92,7 +92,7 @@ func VerifyCred(cred *Credential, ipk *IPK) error {
 	tmp.Add(cred.D)
 
 	a := FP256BN.Ate(ipk.Y, cred.A)
-	b := FP256BN.Ate(mcl_utils.G2(), cred.B)
+	b := FP256BN.Ate(amcl_utils.G2(), cred.B)
 
 	a = FP256BN.Fexp(a)
 	b = FP256BN.Fexp(b)
@@ -101,7 +101,7 @@ func VerifyCred(cred *Credential, ipk *IPK) error {
 		return fmt.Errorf("Ate(ipk.Y, cred.A) != Ate(g2(), cred.B)")
 	}
 
-	c := FP256BN.Ate(mcl_utils.G2(), cred.C)
+	c := FP256BN.Ate(amcl_utils.G2(), cred.C)
 	d := FP256BN.Ate(ipk.X, tmp)
 
 	c = FP256BN.Fexp(c)
