@@ -49,23 +49,21 @@ func publicParams() PublicParams {
 			Decrypt:             true,
 			Restricted:          true,
 		},
-		Parameters: tpm2.TPMUPublicParms{
-			ECCDetail: &tpm2.TPMSECCParms{
-				Symmetric: tpm2.TPMTSymDefObject{
-					Algorithm: tpm2.TPMAlgAES,
-					KeyBits: tpm2.TPMUSymKeyBits{
-						AES: tpm2.NewKeyBits(128),
-					},
-					Mode: tpm2.TPMUSymMode{
-						AES: tpm2.NewAlgID(tpm2.TPMAlgCFB),
-					},
+		Parameters: tpm2.NewTPMUPublicParms(
+			tpm2.TPMAlgECC,
+			&tpm2.TPMSECCParms{
+				Scheme: tpm2.TPMTECCScheme{
+					Scheme: tpm2.TPMAlgECDSA,
+					Details: tpm2.NewTPMUAsymScheme(
+						tpm2.TPMAlgECDSA,
+						&tpm2.TPMSSigSchemeECDSA{
+							HashAlg: tpm2.TPMAlgSHA256,
+						},
+					),
 				},
 				CurveID: tpm2.TPMECCNistP256,
-				KDF: tpm2.TPMTKDFScheme{
-					Scheme: tpm2.TPMAlgNull,
-				},
 			},
-		},
+		),
 	}
 
 	key := tpm2.TPMTPublic{
@@ -79,26 +77,28 @@ func publicParams() PublicParams {
 			SignEncrypt:         true,
 			AdminWithPolicy:     true,
 		},
-		Parameters: tpm2.TPMUPublicParms{
-			ECCDetail: &tpm2.TPMSECCParms{
+		Parameters: tpm2.NewTPMUPublicParms(
+			tpm2.TPMAlgECC,
+			&tpm2.TPMSECCParms{
 				Symmetric: tpm2.TPMTSymDefObject{
 					Algorithm: tpm2.TPMAlgNull,
 				},
 				Scheme: tpm2.TPMTECCScheme{
 					Scheme: tpm2.TPMAlgECDAA,
-					Details: tpm2.TPMUAsymScheme{
-						ECDAA: &tpm2.TPMSSigSchemeECDAA{
+					Details: tpm2.NewTPMUAsymScheme(
+						tpm2.TPMAlgECDAA,
+						&tpm2.TPMSSchemeECDAA{
 							HashAlg: tpm2.TPMAlgSHA256,
 							Count:   0,
 						},
-					},
+					),
 				},
 				CurveID: tpm2.TPMECCBNP256,
 				KDF: tpm2.TPMTKDFScheme{
 					Scheme: tpm2.TPMAlgNull,
 				},
 			},
-		},
+		),
 	}
 
 	params.primary = primary
@@ -133,9 +133,7 @@ func (tpm *TPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHand
 
 	ekCreate := tpm2.CreatePrimary{
 		PrimaryHandle: tpm2.TPMRHEndorsement,
-		InPublic: tpm2.TPM2BPublic{
-			PublicArea: tpm2.RSAEKTemplate,
-		},
+		InPublic:      tpm2.New2B(tpm2.RSAEKTemplate),
 	}
 
 	ekCreateRsp, err := ekCreate.Execute(tpm.tpm)
@@ -145,9 +143,7 @@ func (tpm *TPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHand
 
 	srkCreate := tpm2.CreatePrimary{
 		PrimaryHandle: tpm2.TPMRHOwner,
-		InPublic: tpm2.TPM2BPublic{
-			PublicArea: tpm2.ECCSRKTemplate,
-		},
+		InPublic:      tpm2.New2B(tpm2.ECCSRKTemplate),
 	}
 
 	srkCreateRsp, err := srkCreate.Execute(tpm.tpm)
@@ -163,15 +159,13 @@ func (tpm *TPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHand
 	create := tpm2.CreatePrimary{
 		PrimaryHandle: tpm2.TPMRHOwner,
 		InSensitive: tpm2.TPM2BSensitiveCreate{
-			Sensitive: tpm2.TPMSSensitiveCreate{
+			Sensitive: &tpm2.TPMSSensitiveCreate{
 				UserAuth: tpm2.TPM2BAuth{
 					Buffer: tpm.password,
 				},
 			},
 		},
-		InPublic: tpm2.TPM2BPublic{
-			PublicArea: params.key,
-		},
+		InPublic: tpm2.New2B(params.key),
 	}
 
 	ekHandle := tpm2.AuthHandle{
@@ -195,26 +189,21 @@ func (tpm *TPM) CreateKey() (*tpm2.AuthHandle, *tpm2.AuthHandle, *tpm2.NamedHand
 }
 
 func (tpm *TPM) ActivateCredential(ekHandle *tpm2.AuthHandle, srkHandle *tpm2.NamedHandle, idObject, wrappedCredential []byte) ([]byte, error) {
-	var parsedIdObject tpm2.TPM2BIDObject
-	var parsedWrappedCredential tpm2.TPM2BEncryptedSecret
-
-	err := tpm2.Unmarshal(idObject, &parsedIdObject)
-
+	parsedIdObject, err := tpm2.Unmarshal[tpm2.TPM2BIDObject](idObject)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal: %v", err)
+		return nil, fmt.Errorf("unmarshal id object: %v", err)
 	}
 
-	err = tpm2.Unmarshal(wrappedCredential, &parsedWrappedCredential)
-
+	parsedWrappedCredential, err := tpm2.Unmarshal[tpm2.TPM2BEncryptedSecret](wrappedCredential)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal: %v", err)
+		return nil, fmt.Errorf("unmarshal wrapped credential: %v", err)
 	}
 
 	ac := tpm2.ActivateCredential{
 		ActivateHandle: *srkHandle,
 		KeyHandle:      *ekHandle,
-		CredentialBlob: parsedIdObject,
-		Secret:         parsedWrappedCredential,
+		CredentialBlob: *parsedIdObject,
+		Secret:         *parsedWrappedCredential,
 	}
 
 	acRsp, err := ac.Execute(tpm.tpm)
@@ -240,14 +229,19 @@ func (tpm *TPM) ReadEKCert() (*x509.Certificate, error) {
 		return nil, fmt.Errorf("read public: %w", err)
 	}
 
-	for i := 0; i < int(rspRP.NVPublic.NVPublic.DataSize); i++ {
+	nvpubContents, err := rspRP.NVPublic.Contents()
+	if err != nil {
+		return nil, fmt.Errorf("read public: %w", err)
+	}
+
+	for i := 0; i < int(nvpubContents.DataSize); i++ {
 		read := tpm2.NVRead{
 			AuthHandle: tpm2.NamedHandle{
-				Handle: rspRP.NVPublic.NVPublic.NVIndex,
+				Handle: nvpubContents.NVIndex,
 				Name:   rspRP.NVName,
 			},
 			NVIndex: tpm2.NamedHandle{
-				Handle: rspRP.NVPublic.NVPublic.NVIndex,
+				Handle: nvpubContents.NVIndex,
 				Name:   rspRP.NVName,
 			},
 			Size:   1,
@@ -315,9 +309,7 @@ func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1_ECP *FP256BN.ECP, S2_bytes []
 			Name:   handle.Name,
 			Auth:   tpm2.PasswordAuth(tpm.password),
 		},
-		P1: tpm2.TPM2BECCPoint{
-			Point: P1,
-		},
+		P1: tpm2.New2B(P1),
 		S2: S2,
 		Y2: Y2,
 	}
@@ -327,9 +319,24 @@ func (tpm *TPM) Commit(handle *tpm2.AuthHandle, P1_ECP *FP256BN.ECP, S2_bytes []
 		return nil, nil, nil, nil, fmt.Errorf("commit: %v", err)
 	}
 
-	E := parseECPFromTPMFmt(&rspC.E.Point)
-	L := parseECPFromTPMFmt(&rspC.L.Point)
-	K := parseECPFromTPMFmt(&rspC.K.Point)
+	e, err := rspC.E.Contents()
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("commit: %v", err)
+	}
+
+	l, err := rspC.L.Contents()
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("commit: %v", err)
+	}
+
+	k, err := rspC.K.Contents()
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("commit: %v", err)
+	}
+
+	E := parseECPFromTPMFmt(e)
+	L := parseECPFromTPMFmt(l)
+	K := parseECPFromTPMFmt(k)
 
 	return rspC, E, L, K, nil
 }
@@ -346,12 +353,13 @@ func (tpm *TPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm
 		},
 		InScheme: tpm2.TPMTSigScheme{
 			Scheme: tpm2.TPMAlgECDAA,
-			Details: tpm2.TPMUSigScheme{
-				ECDAA: &tpm2.TPMSSchemeECDAA{
+			Details: tpm2.NewTPMUSigScheme(
+				tpm2.TPMAlgECDAA,
+				&tpm2.TPMSSchemeECDAA{
 					HashAlg: tpm2.TPMAlgSHA256,
 					Count:   count,
 				},
-			},
+			),
 		},
 		Validation: tpm2.TPMTTKHashCheck{
 			Tag: tpm2.TPMSTHashCheck,
@@ -364,8 +372,13 @@ func (tpm *TPM) Sign(digest []byte, count uint16, handle *tpm2.AuthHandle) (*tpm
 		return nil, nil, nil, fmt.Errorf("sign: %v", err)
 	}
 
-	s1 := FP256BN.FromBytes(rspS.Signature.Signature.ECDAA.SignatureS.Buffer)
-	n := FP256BN.FromBytes(rspS.Signature.Signature.ECDAA.SignatureR.Buffer)
+	sig, err := rspS.Signature.Signature.ECDAA()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("sign A: %v", err)
+	}
+
+	s1 := FP256BN.FromBytes(sig.SignatureS.Buffer)
+	n := FP256BN.FromBytes(sig.SignatureR.Buffer)
 
 	return rspS, s1, n, nil
 }
