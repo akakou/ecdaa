@@ -3,8 +3,9 @@ package mcl_utils
 import (
 	"crypto/rand"
 	"math/big"
-	"miracl/core"
-	"miracl/core/FP256BN"
+
+	"github.com/akakou-fork/amcl-go/miracl/core"
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 )
 
 /**

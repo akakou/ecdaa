@@ -2,7 +2,8 @@ package ecdaa
 
 import (
 	"fmt"
-	"miracl/core/FP256BN"
+
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 )
 
 func printECP(ecp *FP256BN.ECP) {

@@ -4,8 +4,9 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
-	"miracl/core/FP256BN"
 	"reflect"
+
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 
 	"github.com/akakou/mcl_utils"
 )

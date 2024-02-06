@@ -1,9 +1,5 @@
 module github.com/akakou/mcl_utils
 
-go 1.19
+go 1.21.4
 
-replace miracl => ./../thirdparty/miracl
-
-require (
-	miracl v0.0.0
-)
+require github.com/akakou-fork/amcl-go/miracl v0.0.0-20240206092846-d00185b82d38 // indirect

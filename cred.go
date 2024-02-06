@@ -3,8 +3,9 @@ package ecdaa
 import (
 	"crypto/rsa"
 	"fmt"
-	"miracl/core"
-	"miracl/core/FP256BN"
+
+	"github.com/akakou-fork/amcl-go/miracl/core"
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 
 	"github.com/akakou/ecdaa/tpm_utils"
 	"github.com/akakou/mcl_utils"
