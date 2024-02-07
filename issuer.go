@@ -6,8 +6,6 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core"
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
-
-	"github.com/akakou/ecdaa/tools"
 )
 
 /**
@@ -75,7 +73,7 @@ func RandomIPK(isk *ISK, rng *core.RAND) IPK {
 	Uy := amcl_utils.G2().Mul(rY)
 
 	// calc `c = H(U_x | U_y | g2 | X | Y)`
-	hash := tools.NewHash()
+	hash := amcl_utils.NewHash()
 	hash.WriteECP2(Ux, Uy, amcl_utils.G2(), X, Y)
 	c := hash.SumToBIG()
 
@@ -120,7 +118,7 @@ func VerifyIPK(ipk *IPK) error {
 	Uy.Sub(tmp)
 
 	// calc `c' = H(U_x | U_y | g2 | X | Y)`
-	hash := tools.NewHash()
+	hash := amcl_utils.NewHash()
 	hash.WriteECP2(Ux, Uy, amcl_utils.G2(), X, Y)
 	cDash := hash.SumToBIG()
 

@@ -9,7 +9,6 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 
-	"github.com/akakou/ecdaa/tools"
 	"github.com/akakou/ecdaa/tpm_utils"
 	"github.com/google/go-tpm/tpm2"
 )
@@ -89,7 +88,7 @@ func (signer SWSigner) Sign(
 }
 
 func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signature, error) {
-	hash := tools.NewHash()
+	hash := amcl_utils.NewHash()
 	hash.WriteBytes(basename)
 
 	B, i, err := hash.HashToECP()
@@ -115,7 +114,7 @@ func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signat
 	}
 
 	// c2 = H(E, S, W, L, B, K,basename, message)
-	hash = tools.NewHash()
+	hash = amcl_utils.NewHash()
 	hash.WriteECP(E, S, W, L, B, K)
 	hash.WriteBytes(basename, message)
 
@@ -131,7 +130,7 @@ func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signat
 	}
 
 	/* calc hash c = H( n | c2 ) */
-	hash = tools.NewHash()
+	hash = amcl_utils.NewHash()
 	hash.WriteBIG(n)
 	hash.WriteBytes(c2Buf)
 	c := hash.SumToBIG()
