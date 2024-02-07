@@ -7,8 +7,6 @@ import (
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
-
-	"github.com/akakou/ecdaa/tools"
 )
 
 type SchnorrProof struct {
@@ -39,7 +37,7 @@ func commit(sk *FP256BN.BIG, B, S *FP256BN.ECP, rng *core.RAND, calcK bool) (*FP
 func sign(r, cDash, sk *FP256BN.BIG, rng *core.RAND) (*FP256BN.BIG, *FP256BN.BIG, *FP256BN.BIG) {
 	n := amcl_utils.RandomBig(rng)
 
-	hash := tools.NewHash()
+	hash := amcl_utils.NewHash()
 	hash.WriteBIG(n, cDash)
 	c := hash.SumToBIG()
 
@@ -50,14 +48,14 @@ func sign(r, cDash, sk *FP256BN.BIG, rng *core.RAND) (*FP256BN.BIG, *FP256BN.BIG
 }
 
 func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, rng *core.RAND) *SchnorrProof {
-	hash := tools.NewHash()
+	hash := amcl_utils.NewHash()
 	hash.WriteBytes(basename)
 	B, _, _ := hash.HashToECP()
 
 	r, E, L, K := commit(sk, B, S, rng, true)
 
 	// c' = H(E, S, W, L, B, K, basename, message)
-	hash = tools.NewHash()
+	hash = amcl_utils.NewHash()
 	if basename == nil {
 		hash.WriteECP(E, S, W)
 	} else {
@@ -85,12 +83,12 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 	E.Sub(tmp)
 
 	// c' = H(E, S, W, L, B, K, basename, message)
-	hash := tools.NewHash()
+	hash := amcl_utils.NewHash()
 
 	if basename == nil {
 		hash.WriteECP(E, S, W)
 	} else {
-		bHash := tools.NewHash()
+		bHash := amcl_utils.NewHash()
 		bHash.WriteBytes(basename)
 
 		B, _, err := bHash.HashToECP()
@@ -112,7 +110,7 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 	// c = H( n | c' )
 	cDashBuf := amcl_utils.BigToBytes(cDash)
 
-	hash = tools.NewHash()
+	hash = amcl_utils.NewHash()
 	hash.WriteBIG(proof.SmallN)
 	hash.WriteBytes(cDashBuf)
 

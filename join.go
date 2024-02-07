@@ -10,7 +10,6 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 
-	"github.com/akakou/ecdaa/tools"
 	"github.com/akakou/ecdaa/tpm_utils"
 )
 
@@ -24,7 +23,7 @@ func GenJoinSeed(rng *core.RAND) (*JoinSeed, *FP256BN.ECP, error) {
 	var seed JoinSeed
 	basename := amcl_utils.RandomBytes(rng, 32)
 
-	hash := tools.NewHash()
+	hash := amcl_utils.NewHash()
 	hash.WriteBytes(basename)
 
 	B, i, err := hash.HashToECP()
@@ -64,7 +63,7 @@ func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, err
 	sk := amcl_utils.RandomBig(rng)
 
 	/* set zero buffers to P1 */
-	hash := tools.NewHash()
+	hash := amcl_utils.NewHash()
 	hash.WriteBytes(seed.S2)
 	bX := hash.SumToBIG()
 
@@ -90,7 +89,7 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *tpm_utils.TPM, rng *core.RAND) (*Joi
 		return nil, nil, err
 	}
 
-	hash := tools.NewHash()
+	hash := amcl_utils.NewHash()
 	hash.WriteBytes(seed.S2)
 	bX := hash.SumToBIG()
 
@@ -104,7 +103,7 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *tpm_utils.TPM, rng *core.RAND) (*Joi
 	}
 
 	/* calc hash c2 = H( U1 | P1 | Q | m ) */
-	hash = tools.NewHash()
+	hash = amcl_utils.NewHash()
 	hash.WriteECP(E, B, K)
 	c2 := hash.SumToBIG()
 
@@ -118,7 +117,7 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *tpm_utils.TPM, rng *core.RAND) (*Joi
 	}
 
 	/* calc hash c1 = H( n | c2 ) */
-	hash = tools.NewHash()
+	hash = amcl_utils.NewHash()
 	hash.WriteBIG(n)
 	hash.WriteBytes(c2Buf[:])
 	c1 := hash.SumToBIG()

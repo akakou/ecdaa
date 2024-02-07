@@ -2,6 +2,8 @@ github.com/akakou-fork/amcl-go/miracl v0.0.0-20240206094909-344c847a50cc h1:Z0KD
 github.com/akakou-fork/amcl-go/miracl v0.0.0-20240206094909-344c847a50cc/go.mod h1:vHuhLv+DmP9mKMIlfDcVzAbm3STwYMC/Wm/+o6ofXos=
 github.com/akakou/fp256bn-amcl-utils v0.0.1 h1:m4HRMJVAwvEccM1GjWiwnXYDf6AZl2F1gbUMKVwx2No=
 github.com/akakou/fp256bn-amcl-utils v0.0.1/go.mod h1:CrZYmpXFIQfnFkfeuZhZhEqQQRz36WD2XYZPy/dQLTY=
+github.com/akakou/fp256bn-amcl-utils v0.0.2 h1:D3jXEciarnRrv/EGCT8Tmwx+/tk/sNbyQeyyL4u+Abc=
+github.com/akakou/fp256bn-amcl-utils v0.0.2/go.mod h1:CrZYmpXFIQfnFkfeuZhZhEqQQRz36WD2XYZPy/dQLTY=
 github.com/google/go-tpm v0.9.0 h1:sQF6YqWMi+SCXpsmS3fd21oPy/vSddwZry4JnmltHVk=
 github.com/google/go-tpm v0.9.0/go.mod h1:FkNVkc6C+IsvDI9Jw1OveJmxGZUUaKxtrpOS47QWKfU=
 github.com/google/go-tpm v0.9.1-0.20240206213016-638c2b803c16 h1:lWKGTgvA30YgalDBXuifS5z/cqtWyPAGBnkuyd4+UUo=
