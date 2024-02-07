@@ -12,9 +12,7 @@ This library mainly supports the [FIDO ECDAA](https://fidoalliance.org/specs/fid
 ## Installation
 
 ```sh
-git clone https://github.com/akakou/ecdaa
-cd ./ecdaa/thirdparty
-sh ./install.sh
+go get github.com/akakou/ecdaa
 ```
 
 ## Test

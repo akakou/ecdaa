@@ -7,8 +7,7 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core"
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
-
-	"github.com/akakou/mcl_utils"
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 
 	"github.com/akakou/ecdaa/tools"
 	"github.com/akakou/ecdaa/tpm_utils"
@@ -123,7 +122,7 @@ func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signat
 	c2 := hash.SumToBIG()
 
 	/* sign and get s1, n */
-	c2Buf := mcl_utils.BigToBytes(c2)
+	c2Buf := amcl_utils.BigToBytes(c2)
 
 	_, s, n, err := (*signer.tpm).Sign(c2Buf, comRsp.Counter, signer.handle.Handle)
 

@@ -8,8 +8,7 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core"
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
-
-	"github.com/akakou/mcl_utils"
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 
 	"github.com/akakou/ecdaa/tools"
 	"github.com/akakou/ecdaa/tpm_utils"
@@ -23,7 +22,7 @@ type JoinSeed struct {
 
 func GenJoinSeed(rng *core.RAND) (*JoinSeed, *FP256BN.ECP, error) {
 	var seed JoinSeed
-	basename := mcl_utils.RandomBytes(rng, 32)
+	basename := amcl_utils.RandomBytes(rng, 32)
 
 	hash := tools.NewHash()
 	hash.WriteBytes(basename)
@@ -62,7 +61,7 @@ type JoinRequestTPM struct {
  */
 func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, error) {
 	/* create key and get public key */
-	sk := mcl_utils.RandomBig(rng)
+	sk := amcl_utils.RandomBig(rng)
 
 	/* set zero buffers to P1 */
 	hash := tools.NewHash()
@@ -110,7 +109,7 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *tpm_utils.TPM, rng *core.RAND) (*Joi
 	c2 := hash.SumToBIG()
 
 	/* sign and get s1, n */
-	c2Buf := mcl_utils.BigToBytes(c2)
+	c2Buf := amcl_utils.BigToBytes(c2)
 
 	_, s1, n, err := (*tpm).Sign(c2Buf[:], comRsp.Counter, handle)
 

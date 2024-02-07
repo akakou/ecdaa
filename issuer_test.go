@@ -3,11 +3,11 @@ package ecdaa
 import (
 	"testing"
 
-	"github.com/akakou/mcl_utils"
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 )
 
 func TestNewIssuer(t *testing.T) {
-	rng := mcl_utils.InitRandom()
+	rng := amcl_utils.InitRandom()
 
 	issuer := RandomIssuer(rng)
 

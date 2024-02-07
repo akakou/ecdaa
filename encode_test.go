@@ -2,18 +2,18 @@ package ecdaa
 
 import (
 	"bytes"
-	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
+	"testing"
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 
-	"github.com/akakou-fork/amcl-go/amcl/core"
-	"github.com/akakou/mcl_utils"
+	"github.com/akakou-fork/amcl-go/miracl/core"
+	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
 
 	"github.com/akakou/ecdaa/tpm_utils"
 )
 
 func TestEncodeDecodeIPK(t *testing.T) {
-	rnd := mcl_utils.InitRandom()
+	rnd := amcl_utils.InitRandom()
 
 	isk := RandomISK(rnd)
 	ipk := RandomIPK(&isk, rnd)
@@ -64,12 +64,12 @@ func TestEncodeDecodeISK(t *testing.T) {
 func TestEncodeDecodeCredential(t *testing.T) {
 	var cred Credential
 
-	rnd := mcl_utils.InitRandom()
+	rnd := amcl_utils.InitRandom()
 
-	cred.A = mcl_utils.RandomECP(rnd)
-	cred.B = mcl_utils.RandomECP(rnd)
-	cred.C = mcl_utils.RandomECP(rnd)
-	cred.D = mcl_utils.RandomECP(rnd)
+	cred.A = amcl_utils.RandomECP(rnd)
+	cred.B = amcl_utils.RandomECP(rnd)
+	cred.C = amcl_utils.RandomECP(rnd)
+	cred.D = amcl_utils.RandomECP(rnd)
 
 	encoded, _ := cred.Encode()
 	decoded := Credential{}
@@ -97,17 +97,17 @@ func TestEncodeDecodeSignature(t *testing.T) {
 	signature.Proof = &SchnorrProof{}
 	signature.RandomizedCred = &Credential{}
 
-	rnd := mcl_utils.InitRandom()
+	rnd := amcl_utils.InitRandom()
 
 	signature.Proof.SmallC = FP256BN.Random(rnd)
 	signature.Proof.SmallN = FP256BN.Random(rnd)
 	signature.Proof.SmallS = FP256BN.Random(rnd)
 
-	signature.RandomizedCred.A = mcl_utils.RandomECP(rnd)
-	signature.RandomizedCred.B = mcl_utils.RandomECP(rnd)
-	signature.RandomizedCred.C = mcl_utils.RandomECP(rnd)
-	signature.RandomizedCred.D = mcl_utils.RandomECP(rnd)
-	signature.Proof.K = mcl_utils.RandomECP(rnd)
+	signature.RandomizedCred.A = amcl_utils.RandomECP(rnd)
+	signature.RandomizedCred.B = amcl_utils.RandomECP(rnd)
+	signature.RandomizedCred.C = amcl_utils.RandomECP(rnd)
+	signature.RandomizedCred.D = amcl_utils.RandomECP(rnd)
+	signature.Proof.K = amcl_utils.RandomECP(rnd)
 
 	encoded, _ := signature.Encode()
 	decoded := Signature{}
@@ -149,10 +149,10 @@ func TestEncodeDecodeSignature(t *testing.T) {
 func TestEncodeDecodeJoinSeeds(t *testing.T) {
 	var joinSeed JoinSeed
 
-	rnd := mcl_utils.InitRandom()
+	rnd := amcl_utils.InitRandom()
 
 	joinSeed.Basename = []byte("basename")
-	joinSeed.S2 = mcl_utils.RandomBytes(rnd, 32)
+	joinSeed.S2 = amcl_utils.RandomBytes(rnd, 32)
 	joinSeed.Y2 = FP256BN.Random(rnd)
 
 	encoded, _ := joinSeed.Encode()
@@ -173,16 +173,16 @@ func TestEncodeDecodeJoinSeeds(t *testing.T) {
 }
 
 func TestEncodedDecodeJoinRequest(t *testing.T) {
-	rnd := mcl_utils.InitRandom()
+	rnd := amcl_utils.InitRandom()
 
 	joinRequest := JoinRequest{
 		Proof: &SchnorrProof{
-			SmallC: mcl_utils.RandomBig(rnd),
-			SmallS: mcl_utils.RandomBig(rnd),
-			SmallN: mcl_utils.RandomBig(rnd),
-			K:      mcl_utils.RandomECP(rnd),
+			SmallC: amcl_utils.RandomBig(rnd),
+			SmallS: amcl_utils.RandomBig(rnd),
+			SmallN: amcl_utils.RandomBig(rnd),
+			K:      amcl_utils.RandomECP(rnd),
 		},
-		Q: mcl_utils.RandomECP(rnd),
+		Q: amcl_utils.RandomECP(rnd),
 	}
 
 	encoded, _ := joinRequest.Encode()
@@ -231,15 +231,15 @@ func TestEncodedDecodeJoinRequestTPM(t *testing.T) {
 	joinRequestTpm := JoinRequestTPM{
 		JoinReq: &JoinRequest{
 			Proof: &SchnorrProof{
-				SmallC: mcl_utils.RandomBig(rnd),
-				SmallS: mcl_utils.RandomBig(rnd),
-				SmallN: mcl_utils.RandomBig(rnd),
-				K:      mcl_utils.RandomECP(rnd),
+				SmallC: amcl_utils.RandomBig(rnd),
+				SmallS: amcl_utils.RandomBig(rnd),
+				SmallN: amcl_utils.RandomBig(rnd),
+				K:      amcl_utils.RandomECP(rnd),
 			},
-			Q: mcl_utils.RandomECP(rnd),
+			Q: amcl_utils.RandomECP(rnd),
 		},
 		EKCert:  cert,
-		SrkName: mcl_utils.RandomBytes(rnd, 32),
+		SrkName: amcl_utils.RandomBytes(rnd, 32),
 	}
 
 	encoded, err := joinRequestTpm.Encode()
@@ -284,11 +284,11 @@ func TestEncodedDecodeCredCipher(t *testing.T) {
 
 	rnd := core.NewRAND()
 
-	credCipher.WrappedCredential = mcl_utils.RandomBytes(rnd, 32)
-	credCipher.IdObject = mcl_utils.RandomBytes(rnd, 32)
-	credCipher.EncA = mcl_utils.RandomBytes(rnd, 32)
-	credCipher.EncC = mcl_utils.RandomBytes(rnd, 32)
-	credCipher.IV = mcl_utils.RandomBytes(rnd, 32)
+	credCipher.WrappedCredential = amcl_utils.RandomBytes(rnd, 32)
+	credCipher.IdObject = amcl_utils.RandomBytes(rnd, 32)
+	credCipher.EncA = amcl_utils.RandomBytes(rnd, 32)
+	credCipher.EncC = amcl_utils.RandomBytes(rnd, 32)
+	credCipher.IV = amcl_utils.RandomBytes(rnd, 32)
 
 	encoded, _ := credCipher.Encode()
 	decoded := CredentialCipher{}
@@ -318,8 +318,8 @@ func TestEncodedDecodeCredCipher(t *testing.T) {
 func TestEncodedDecodeRL(t *testing.T) {
 	var rl RevocationList
 
-	rnd := mcl_utils.InitRandom()
-	rand := mcl_utils.RandomBig(rnd)
+	rnd := amcl_utils.InitRandom()
+	rand := amcl_utils.RandomBig(rnd)
 
 	rl = append(rl, rand)
 	rl = append(rl, rand)
