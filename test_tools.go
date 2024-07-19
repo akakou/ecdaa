@@ -2,8 +2,7 @@ package ecdaa
 
 import (
 	"github.com/akakou-fork/amcl-go/miracl/core"
-
-	"github.com/akakou/ecdaa/tpm_utils"
+	_tpm "github.com/akakou/ecdaa/tpm"
 )
 
 func testIssuer(rng *core.RAND) (*Issuer, error) {
@@ -62,7 +61,7 @@ func ExampleInitialize(rng *core.RAND) (*Issuer, *SWSigner, error) {
 	return issuer, &signer, nil
 }
 
-func ExampleTPMInitialize(tpm *tpm_utils.TPM, rng *core.RAND) (*Issuer, *TPMSigner, error) {
+func ExampleTPMInitialize(tpm *_tpm.TPM, rng *core.RAND) (*Issuer, *TPMSigner, error) {
 	issuer, err := testIssuer(rng)
 	if err != nil {
 		return nil, nil, err

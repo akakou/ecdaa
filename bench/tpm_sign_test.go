@@ -4,20 +4,20 @@ import (
 	"encoding/hex"
 	"testing"
 
-	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
+	_acml "github.com/akakou/fp256bn-amcl-utils"
 
 	"github.com/akakou/ecdaa"
-	"github.com/akakou/ecdaa/tpm_utils"
+	_tpm "github.com/akakou/ecdaa/tpm"
 )
 
 var password = []byte("piyo")
 
 func BenchmarkSignTPM(b *testing.B) {
-	tpm, err := tpm_utils.OpenTPM(password, tpm_utils.TPM_PATH)
+	tpm, err := _tpm.OpenTPM(password, _tpm.TPM_PATH)
 	checkError(err, b)
 	defer tpm.Close()
 
-	rng := amcl_utils.InitRandom()
+	rng := _acml.InitRandom()
 	_, signer, err := ecdaa.ExampleTPMInitialize(tpm, rng)
 	checkError(err, b)
 

@@ -8,9 +8,8 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core"
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
-	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
-
-	"github.com/akakou/ecdaa/tpm_utils"
+	_tpm "github.com/akakou/ecdaa/tpm"
+	_acml "github.com/akakou/fp256bn-amcl-utils"
 )
 
 type JoinSeed struct {
@@ -21,9 +20,9 @@ type JoinSeed struct {
 
 func GenJoinSeed(rng *core.RAND) (*JoinSeed, *FP256BN.ECP, error) {
 	var seed JoinSeed
-	basename := amcl_utils.RandomBytes(rng, 32)
+	basename := _acml.RandomBytes(rng, 32)
 
-	hash := amcl_utils.NewHash()
+	hash := _acml.NewHash()
 	hash.WriteBytes(basename)
 
 	B, i, err := hash.HashToECP()
@@ -60,10 +59,10 @@ type JoinRequestTPM struct {
  */
 func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, error) {
 	/* create key and get public key */
-	sk := amcl_utils.RandomBig(rng)
+	sk := _acml.RandomBig(rng)
 
 	/* set zero buffers to P1 */
-	hash := amcl_utils.NewHash()
+	hash := _acml.NewHash()
 	hash.WriteBytes(seed.S2)
 	bX := hash.SumToBIG()
 
@@ -81,7 +80,7 @@ func GenJoinReq(seed *JoinSeed, rng *core.RAND) (*JoinRequest, *FP256BN.BIG, err
 	return &req, sk, nil
 }
 
-func GenJoinReqWithTPM(seed *JoinSeed, tpm *tpm_utils.TPM, rng *core.RAND) (*JoinRequestTPM, *KeyHandles, error) {
+func GenJoinReqWithTPM(seed *JoinSeed, tpm *_tpm.TPM, rng *core.RAND) (*JoinRequestTPM, *KeyHandles, error) {
 	/* create key and get public key */
 	handle, ekHandle, srkHandle, _, err := tpm.CreateKey()
 
@@ -89,7 +88,7 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *tpm_utils.TPM, rng *core.RAND) (*Joi
 		return nil, nil, err
 	}
 
-	hash := amcl_utils.NewHash()
+	hash := _acml.NewHash()
 	hash.WriteBytes(seed.S2)
 	bX := hash.SumToBIG()
 
@@ -103,12 +102,12 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *tpm_utils.TPM, rng *core.RAND) (*Joi
 	}
 
 	/* calc hash c2 = H( U1 | P1 | Q | m ) */
-	hash = amcl_utils.NewHash()
+	hash = _acml.NewHash()
 	hash.WriteECP(E, B, K)
 	c2 := hash.SumToBIG()
 
 	/* sign and get s1, n */
-	c2Buf := amcl_utils.BigToBytes(c2)
+	c2Buf := _acml.BigToBytes(c2)
 
 	_, s1, n, err := (*tpm).Sign(c2Buf[:], comRsp.Counter, handle)
 
@@ -117,7 +116,7 @@ func GenJoinReqWithTPM(seed *JoinSeed, tpm *tpm_utils.TPM, rng *core.RAND) (*Joi
 	}
 
 	/* calc hash c1 = H( n | c2 ) */
-	hash = amcl_utils.NewHash()
+	hash = _acml.NewHash()
 	hash.WriteBIG(n)
 	hash.WriteBytes(c2Buf[:])
 	c1 := hash.SumToBIG()

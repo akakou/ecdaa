@@ -1,18 +1,19 @@
 package ecdaa_bench
 
 import (
-	"miracl/core/FP256BN"
 	"testing"
 
+	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
+	_acml "github.com/akakou/fp256bn-amcl-utils"
+
 	"github.com/akakou/ecdaa/tools"
-	"github.com/akakou/mcl_utils"
 )
 
 func BenchmarkPrimitive(b *testing.B) {
-	g1 := mcl_utils.G1()
-	g2 := mcl_utils.G2()
-	rnd := mcl_utils.InitRandom()
-	r := mcl_utils.RandomBig(rnd)
+	g1 := _acml.G1()
+	g2 := _acml.G2()
+	rnd := _acml.InitRandom()
+	r := _acml.RandomBig(rnd)
 
 	b.Run("mult g1", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -34,7 +35,7 @@ func BenchmarkPrimitive(b *testing.B) {
 
 	b.Run("init random", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			mcl_utils.InitRandom()
+			_acml.InitRandom()
 		}
 	})
 

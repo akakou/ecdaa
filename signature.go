@@ -7,16 +7,16 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core"
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
-	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
+	_acml "github.com/akakou/fp256bn-amcl-utils"
 
-	"github.com/akakou/ecdaa/tpm_utils"
+	_tpm "github.com/akakou/ecdaa/tpm"
 	"github.com/google/go-tpm/tpm2"
 )
 
 type RevocationList = []*FP256BN.BIG
 
 type Member struct {
-	Tpm        *tpm_utils.TPM
+	Tpm        *_tpm.TPM
 	KeyHandles *KeyHandles
 }
 
@@ -26,7 +26,7 @@ type KeyHandles struct {
 	Handle    *tpm2.AuthHandle
 }
 
-func NewMember(tpm *tpm_utils.TPM) Member {
+func NewMember(tpm *_tpm.TPM) Member {
 	var member = Member{
 		Tpm: tpm,
 	}
@@ -47,7 +47,7 @@ type SWSigner struct {
 type TPMSigner struct {
 	cred   *Credential
 	handle *KeyHandles
-	tpm    *tpm_utils.TPM
+	tpm    *_tpm.TPM
 }
 
 func NewSWSigner(cred *Credential, sk *FP256BN.BIG) SWSigner {
@@ -59,7 +59,7 @@ func NewSWSigner(cred *Credential, sk *FP256BN.BIG) SWSigner {
 	return signer
 }
 
-func NewTPMSigner(cred *Credential, handle *KeyHandles, tpm *tpm_utils.TPM) TPMSigner {
+func NewTPMSigner(cred *Credential, handle *KeyHandles, tpm *_tpm.TPM) TPMSigner {
 	var signer = TPMSigner{
 		cred:   cred,
 		handle: handle,
@@ -88,7 +88,7 @@ func (signer SWSigner) Sign(
 }
 
 func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signature, error) {
-	hash := amcl_utils.NewHash()
+	hash := _acml.NewHash()
 	hash.WriteBytes(basename)
 
 	B, i, err := hash.HashToECP()
@@ -114,14 +114,14 @@ func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signat
 	}
 
 	// c2 = H(E, S, W, L, B, K,basename, message)
-	hash = amcl_utils.NewHash()
+	hash = _acml.NewHash()
 	hash.WriteECP(E, S, W, L, B, K)
 	hash.WriteBytes(basename, message)
 
 	c2 := hash.SumToBIG()
 
 	/* sign and get s1, n */
-	c2Buf := amcl_utils.BigToBytes(c2)
+	c2Buf := _acml.BigToBytes(c2)
 
 	_, s, n, err := (*signer.tpm).Sign(c2Buf, comRsp.Counter, signer.handle.Handle)
 
@@ -130,7 +130,7 @@ func (signer *TPMSigner) Sign(message, basename []byte, rng *core.RAND) (*Signat
 	}
 
 	/* calc hash c = H( n | c2 ) */
-	hash = amcl_utils.NewHash()
+	hash = _acml.NewHash()
 	hash.WriteBIG(n)
 	hash.WriteBytes(c2Buf)
 	c := hash.SumToBIG()

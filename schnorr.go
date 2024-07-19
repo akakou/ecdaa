@@ -6,7 +6,7 @@ import (
 	"github.com/akakou-fork/amcl-go/miracl/core"
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
-	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
+	_acml "github.com/akakou/fp256bn-amcl-utils"
 )
 
 type SchnorrProof struct {
@@ -19,7 +19,7 @@ type SchnorrProof struct {
 type SchnorrProver struct{}
 
 func commit(sk *FP256BN.BIG, B, S *FP256BN.ECP, rng *core.RAND, calcK bool) (*FP256BN.BIG, *FP256BN.ECP, *FP256BN.ECP, *FP256BN.ECP) {
-	r := amcl_utils.RandomBig(rng)
+	r := _acml.RandomBig(rng)
 
 	E := S.Mul(r)
 	L := B.Mul(r)
@@ -35,27 +35,27 @@ func commit(sk *FP256BN.BIG, B, S *FP256BN.ECP, rng *core.RAND, calcK bool) (*FP
 }
 
 func sign(r, cDash, sk *FP256BN.BIG, rng *core.RAND) (*FP256BN.BIG, *FP256BN.BIG, *FP256BN.BIG) {
-	n := amcl_utils.RandomBig(rng)
+	n := _acml.RandomBig(rng)
 
-	hash := amcl_utils.NewHash()
+	hash := _acml.NewHash()
 	hash.WriteBIG(n, cDash)
 	c := hash.SumToBIG()
 
-	s := FP256BN.Modmul(c, sk, amcl_utils.P())
-	s = FP256BN.Modadd(r, s, amcl_utils.P())
+	s := FP256BN.Modmul(c, sk, _acml.P())
+	s = FP256BN.Modadd(r, s, _acml.P())
 
 	return n, c, s
 }
 
 func proveSchnorr(message, basename []byte, sk *FP256BN.BIG, S, W *FP256BN.ECP, rng *core.RAND) *SchnorrProof {
-	hash := amcl_utils.NewHash()
+	hash := _acml.NewHash()
 	hash.WriteBytes(basename)
 	B, _, _ := hash.HashToECP()
 
 	r, E, L, K := commit(sk, B, S, rng, true)
 
 	// c' = H(E, S, W, L, B, K, basename, message)
-	hash = amcl_utils.NewHash()
+	hash = _acml.NewHash()
 	if basename == nil {
 		hash.WriteECP(E, S, W)
 	} else {
@@ -83,12 +83,12 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 	E.Sub(tmp)
 
 	// c' = H(E, S, W, L, B, K, basename, message)
-	hash := amcl_utils.NewHash()
+	hash := _acml.NewHash()
 
 	if basename == nil {
 		hash.WriteECP(E, S, W)
 	} else {
-		bHash := amcl_utils.NewHash()
+		bHash := _acml.NewHash()
 		bHash.WriteBytes(basename)
 
 		B, _, err := bHash.HashToECP()
@@ -108,9 +108,9 @@ func verifySchnorr(message, basename []byte, proof *SchnorrProof, S, W *FP256BN.
 	cDash := hash.SumToBIG()
 
 	// c = H( n | c' )
-	cDashBuf := amcl_utils.BigToBytes(cDash)
+	cDashBuf := _acml.BigToBytes(cDash)
 
-	hash = amcl_utils.NewHash()
+	hash = _acml.NewHash()
 	hash.WriteBIG(proof.SmallN)
 	hash.WriteBytes(cDashBuf)
 

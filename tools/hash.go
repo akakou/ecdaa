@@ -8,7 +8,7 @@ import (
 
 	"github.com/akakou-fork/amcl-go/miracl/core/FP256BN"
 
-	amcl_utils "github.com/akakou/fp256bn-amcl-utils"
+	_acml "github.com/akakou/fp256bn-amcl-utils"
 )
 
 type Hash struct {
@@ -21,21 +21,21 @@ func NewHash() Hash {
 
 func (h *Hash) WriteECP(n ...*FP256BN.ECP) {
 	for _, v := range n {
-		buf := amcl_utils.EcpToBytes(v)
+		buf := _acml.EcpToBytes(v)
 		h.B = append(h.B, buf)
 	}
 }
 
 func (h *Hash) WriteECP2(n ...*FP256BN.ECP2) {
 	for _, v := range n {
-		buf := amcl_utils.Ecp2ToBytes(v)
+		buf := _acml.Ecp2ToBytes(v)
 		h.B = append(h.B, buf[:])
 	}
 }
 
 func (h *Hash) WriteBIG(n ...*FP256BN.BIG) {
 	for _, v := range n {
-		buf := amcl_utils.BigToBytes(v)
+		buf := _acml.BigToBytes(v)
 		h.B = append(h.B, buf)
 	}
 }
@@ -60,7 +60,7 @@ func (h *Hash) SumToBytes() []byte {
 func (h *Hash) SumToBIG() *FP256BN.BIG {
 	retHash := h.SumToBytes()
 	resBIG := FP256BN.FromBytes(retHash)
-	resBIG.Mod(amcl_utils.P())
+	resBIG.Mod(_acml.P())
 
 	return resBIG
 }
